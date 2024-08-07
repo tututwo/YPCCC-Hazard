@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
   typescript: {
     // !! WARN !!
@@ -6,6 +7,19 @@ const nextConfig = {
     // your project has type errors.
     // !! WARN !!
     ignoreBuildErrors: true,
+  },
+  webpack: (config, options) => {
+    config.module.rules.push({
+      test: /\.csv$/,
+      loader: "csv-loader",
+      options: {
+        dynamicTyping: true,
+        header: true,
+        skipEmptyLines: true,
+      },
+    });
+
+    return config;
   },
 };
 

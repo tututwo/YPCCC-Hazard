@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { DataTableDemo } from "@/components/containers/Table";
 
 import { useEffect, useState } from "react";
+
 const categories = [
   {
     name: "Heat",
