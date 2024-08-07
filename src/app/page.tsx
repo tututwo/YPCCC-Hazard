@@ -187,7 +187,7 @@ export default function Home() {
         {isDesktop && (
           <aside className="w-full desktop:w-1/4 p-4">
             <Button asChild className="bg-slate-400 w-full min-h-[4rem] text-xl ">
-              <Link href="/login">Explore Mode >&nbsp;</Link>
+              <Link href="/login">Explore Mode &gt;&nbsp;</Link>
             </Button>
             <div className="table-container">
               <DataTableDemo></DataTableDemo>
