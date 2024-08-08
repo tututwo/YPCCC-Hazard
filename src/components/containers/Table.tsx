@@ -169,7 +169,7 @@ export default function DataTableDemo({ data }) {
               return (
                 <TableRow key={row.id} data-index={virtualRow.index}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-1 pl-0">
+                    <TableCell key={cell.id} className="py-1 pl-0 text-nowrap min-w-[144px]">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
