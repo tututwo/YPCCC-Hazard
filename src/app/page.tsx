@@ -1,6 +1,7 @@
 "use client";
 //@ts-nocheck
 import Link from "next/link";
+// NOTE: UI library
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,8 +15,9 @@ import {
 
 import { Input } from "@/components/ui/input";
 
-import { DataTableDemo } from "@/components/containers/Table";
+import DataTableDemo  from "@/components/containers/Table";
 
+import { csv } from "d3-fetch";
 import { useEffect, useState } from "react";
 
 const categories = [
@@ -28,12 +30,20 @@ const categories = [
   { name: "Flood", subcategories: ["Subcategory 1", "Subcategory 2"] },
   { name: "Drought", subcategories: ["Subcategory 1", "Subcategory 2"] },
 ];
-
+// 
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [isSideBarOpen, setIsSideBarOpen] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState("Heat");
   const [selectedSubcategory, setSelectedSubcategory] = useState("Heat gap");
+
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    csv('https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv').then(setData);
+  }, []);
+
+
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 820);
   }, []);
@@ -185,12 +195,13 @@ export default function Home() {
           <aside className="w-full desktop:w-[388px] flex-shrink-0 p-4">
             <Button
               asChild
-              className="bg-slate-400 w-full min-h-[4rem] text-xl "
+              className="bg-[#E8E8E8] w-full min-h-[4rem] text-xl rounded-none text-slate-950 font-bold"
             >
-              <Link href="/login">Explore Mode &gt;&nbsp;</Link>
+              <Link href="/login" >Explore Mode &gt;&nbsp;</Link>
             </Button>
+            <div className="mt-4 mb-1 "><b className="text-xl">3143 Counties</b> in the US</div>
             <div className="table-container">
-              <DataTableDemo></DataTableDemo>
+              <DataTableDemo data={data}></DataTableDemo>
             </div>
 
             <Button variant={"ghost"} className="w-full flex text-lg">
