@@ -15,10 +15,15 @@ import {
 
 import { Input } from "@/components/ui/input";
 
-import DataTableDemo  from "@/components/containers/Table";
+import DataTableDemo from "@/components/containers/Table";
 
+// NOTE: Utility library
 import { csv } from "d3-fetch";
+import * as d3 from "d3";
 import { useEffect, useState } from "react";
+
+// NOTE: Custom Library
+import Scatterplot from "@/components/containers/Scatterplot";
 
 const categories = [
   {
@@ -30,7 +35,7 @@ const categories = [
   { name: "Flood", subcategories: ["Subcategory 1", "Subcategory 2"] },
   { name: "Drought", subcategories: ["Subcategory 1", "Subcategory 2"] },
 ];
-// 
+//
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [isSideBarOpen, setIsSideBarOpen] = useState(true);
@@ -40,9 +45,17 @@ export default function Home() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    csv('https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv').then(setData);
+    csv(
+      "https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv",
+      d3.autotype
+    ).then((loadedData) => {
+      loadedData.forEach((d) => {
+        d.L_cc_heatscore = +d.L_cc_heatscore;
+        d.R_heat_worry = +d.R_heat_worry;
+      });
+      setData(loadedData);
+    });
   }, []);
-
 
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 820);
@@ -71,12 +84,11 @@ export default function Home() {
           <path d="M7.07031 13.8887C7.2207 14.0391 7.40527 14.1211 7.62402 14.1211C8.06836 14.1211 8.41699 13.7725 8.41699 13.3281C8.41699 13.1094 8.32812 12.9043 8.17773 12.7539L3.37207 8.05762L8.17773 3.375C8.32812 3.21777 8.41699 3.0127 8.41699 2.80078C8.41699 2.35645 8.06836 2.00781 7.62402 2.00781C7.40527 2.00781 7.2207 2.08984 7.07031 2.24023L1.73828 7.44922C1.56055 7.62012 1.46484 7.8252 1.46484 8.06445C1.46484 8.29688 1.55371 8.49512 1.73828 8.67969L7.07031 13.8887ZM13.1748 13.8887C13.3252 14.0391 13.5098 14.1211 13.7354 14.1211C14.1797 14.1211 14.5283 13.7725 14.5283 13.3281C14.5283 13.1094 14.4395 12.9043 14.2891 12.7539L9.4834 8.05762L14.2891 3.375C14.4395 3.21777 14.5283 3.0127 14.5283 2.80078C14.5283 2.35645 14.1797 2.00781 13.7354 2.00781C13.5098 2.00781 13.3252 2.08984 13.1748 2.24023L7.84961 7.44922C7.66504 7.62012 7.57617 7.8252 7.56934 8.06445C7.56934 8.29688 7.66504 8.49512 7.84961 8.67969L13.1748 13.8887Z"></path>
         </svg>
       </Button>
-    
 
       <main className="flex-grow min-h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full border-4 m-4">
         {/* NOTE: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
         <aside
-          className={`flex-grow flex-shrink-0 p-3 flex flex-col min-h-0 bg-[#E2E2E2] w-full transition-all duration-300 ease-in-out ${
+          className={`desktop:flex-grow flex-shrink-0 p-3 flex flex-col min-h-0 bg-[#E2E2E2] w-full transition-all duration-300 ease-in-out ${
             isSideBarOpen ? "desktop:w-[268px]" : "desktop:w-0 overflow-hidden"
           } space-y-4`}
           id="side-bar"
@@ -102,65 +114,66 @@ export default function Home() {
             Reality- Perception Gap
           </h1>
 
-          <div className="flex-grow flex flex-col justify-between">
-            <section className="mb-4 p-4 ">
-              {categories.map((category, i) => (
-                <div
-                  key={category.name}
-                  className="overflow-hidden "
-                >
-                  <button
-                    onClick={() => toggleCategory(category.name)}
-                    className={`${
-                      i === 0 ? "border-t-0" : "border-t-2"
-                    } border-[lightgrey] w-full py-1 px-2 text-left font-thin flex justify-between items-center text-lg`}
-                  >
-                    <h3>{category.name}</h3>
-                    <svg
-                      className={`size-4 transition-transform duration-300 ${
-                        expandedCategory === category.name ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+          {isDesktop && (
+            <div className="flex-grow flex flex-col justify-between">
+              <section className="mb-4 p-4 ">
+                {categories.map((category, i) => (
+                  <div key={category.name} className="overflow-hidden ">
+                    <button
+                      onClick={() => toggleCategory(category.name)}
+                      className={`${
+                        i === 0 ? "border-t-0" : "border-t-2"
+                      } border-[lightgrey] w-full py-1 px-2 text-left font-thin flex justify-between items-center text-lg`}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-                  <div
-                    className={`transition-all duration-300 ease-in-out ${
-                      expandedCategory === category.name
-                        ? "max-h-96 opacity-100"
-                        : "max-h-0 opacity-0"
-                    } overflow-hidden`}
-                  >
-                    <ul className="py-1">
-                      {category.subcategories.map((subcategory) => (
-                        <li key={subcategory} className="">
-                          <button
-                            onClick={() => setSelectedSubcategory(subcategory)}
-                            className={`w-full text-left p-2 hover:cursor-pointer ${
-                              selectedSubcategory === subcategory
-                                ? "bg-[#B5B5B5]"
-                                : "hover:bg-gray-100"
-                            }`}
-                          >
-                            {subcategory}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                      <h3>{category.name}</h3>
+                      <svg
+                        className={`size-4 transition-transform duration-300 ${
+                          expandedCategory === category.name ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+                    <div
+                      className={`transition-all duration-300 ease-in-out ${
+                        expandedCategory === category.name
+                          ? "max-h-96 opacity-100"
+                          : "max-h-0 opacity-0"
+                      } overflow-hidden`}
+                    >
+                      <ul className="py-1">
+                        {category.subcategories.map((subcategory) => (
+                          <li key={subcategory} className="">
+                            <button
+                              onClick={() =>
+                                setSelectedSubcategory(subcategory)
+                              }
+                              className={`w-full text-left p-2 hover:cursor-pointer ${
+                                selectedSubcategory === subcategory
+                                  ? "bg-[#B5B5B5]"
+                                  : "hover:bg-gray-100"
+                              }`}
+                            >
+                              {subcategory}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </section>
-            {isDesktop && <footer className="mt-auto">2024</footer>}
-          </div>
+                ))}
+              </section>
+              <footer className="mt-auto">2024</footer>
+            </div>
+          )}
         </aside>
 
         <section className="w-full desktop:flex-grow desktop:flex-shrink p-4 flex flex-col">
@@ -173,7 +186,7 @@ export default function Home() {
               </div>
             </div>
           )}
-          <div className="flex-grow" id="map-container">
+          <div className="flex-grow max-h-[50vh]" id="map-container">
             <iframe
               width="100%"
               height="100%"
@@ -181,8 +194,20 @@ export default function Home() {
               src="https://observablehq.com/embed/cadb3c4f5452d830?cells=viewof+selectedState%2Cmap"
             ></iframe>
           </div>
-          <div className="mt-4" id="scatterplot-container">
-            {/* D3.js scatterplot will be rendered here */}
+
+          <div className="mt-4 flex-grow" id="scatterplot-container">
+            {/* You might not want to use `event.pageY`? We are look for relative y position from the parent element, right? What would you use?
+
+Also, the brushable feature is not working at all.
+
+I want to make some changes to improve the combination of brushing and tooltip:
+2. When my mouse is down, but my mouse position is within the brushing selection rectangle, I want the selection rectangle to be visible.
+3. After I brush to create some enlarged circles, I want the rest of circles still able to be hovered to show tooltips when I hovered them.
+Tell me your thoughts and write me a gracefully implemented React component in the most elegant way, with d3.js as if written by Mike Bostock */}
+            <Scatterplot
+              data={data}
+             
+            ></Scatterplot>
           </div>
           {isDesktop && (
             <div className="annotation-section mt-4">
@@ -191,15 +216,17 @@ export default function Home() {
           )}
         </section>
 
-        {isDesktop && (
+        {isDesktop ? (
           <aside className="w-full desktop:w-[388px] flex-shrink-0 p-4">
             <Button
               asChild
               className="bg-[#E8E8E8] w-full min-h-[4rem] text-xl rounded-none text-slate-950 font-bold"
             >
-              <Link href="/login" >Explore Mode &gt;&nbsp;</Link>
+              <Link href="/login">Explore Mode &gt;&nbsp;</Link>
             </Button>
-            <div className="mt-4 mb-1 "><b className="text-xl">3143 Counties</b> in the US</div>
+            <div className="mt-4 mb-1 ">
+              <b className="text-xl">3143 Counties</b> in the US
+            </div>
             <div className="table-container">
               <DataTableDemo data={data}></DataTableDemo>
             </div>
@@ -223,6 +250,10 @@ export default function Home() {
               &nbsp;&nbsp;Download Data
             </Button>
           </aside>
+        ) : (
+          <div className="table-container">
+            <DataTableDemo data={data}></DataTableDemo>
+          </div>
         )}
       </main>
 
