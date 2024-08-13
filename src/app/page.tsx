@@ -20,11 +20,14 @@ import DataTableDemo from "@/components/containers/Table";
 // NOTE: Utility library
 import { csv } from "d3-fetch";
 import * as d3 from "d3";
-import { useEffect, useState } from "react";
+import { useEffect, useState,createContext,useContext } from "react";
 
 // NOTE: Custom Library
 import Scatterplot from "@/components/containers/Scatterplot";
-
+import Map from "@/components/containers/Map";
+import Legend from "@/components/containers/ui-container/Legend";
+import { MapProvider } from "@/lib/context";
+import StateButton from "@/components/containers/ui-container/StateButton";
 const categories = [
   {
     name: "Heat",
@@ -35,12 +38,13 @@ const categories = [
   { name: "Flood", subcategories: ["Subcategory 1", "Subcategory 2"] },
   { name: "Drought", subcategories: ["Subcategory 1", "Subcategory 2"] },
 ];
-//
+
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [isSideBarOpen, setIsSideBarOpen] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState("Heat");
   const [selectedSubcategory, setSelectedSubcategory] = useState("Heat gap");
+
 
   const [data, setData] = useState([]);
 
@@ -72,6 +76,7 @@ export default function Home() {
   };
   return (
     <>
+    <MapProvider>
       <Button variant={"outline"} onClick={expandCollapseLeft}>
         {" "}
         <svg
@@ -176,38 +181,33 @@ export default function Home() {
           )}
         </aside>
 
-        <section className="w-full desktop:flex-grow desktop:flex-shrink p-4 flex flex-col">
+        <section className="w-full desktop:flex-grow desktop:flex-shrink pl-2 pr-4 flex flex-col">
           {isDesktop && (
-            <div className="legend mb-4">
+            <div className="legend mb-4 min-w-[240px]">
               {" "}
               <div className="flex w-full max-w-sm items-center space-x-2">
-                <Input type="email" placeholder="Address" />
-                <Button type="submit">Search</Button>
+                <StateButton
+                  
+                />
+                {/* <Input type="email" placeholder="Address" />
+                <Button type="submit">Search</Button> */}
               </div>
             </div>
           )}
-          <div className="flex-grow max-h-[50vh]" id="map-container">
-            <iframe
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              src="https://observablehq.com/embed/cadb3c4f5452d830?cells=viewof+selectedState%2Cmap"
-            ></iframe>
+          <div
+            className="flex-grow max-h-[50vh] flex flex-col desktop:flex-row"
+            id="map-container"
+          >
+            <map className="flex-grow md:order-2">
+              <Map width={1200} height={500} />
+            </map>
+            <section className="h-64 md:h-auto desktop:w-[100px] md:order-1">
+              <Legend></Legend>
+            </section>
           </div>
 
           <div className="mt-4 flex-grow" id="scatterplot-container">
-            {/* You might not want to use `event.pageY`? We are look for relative y position from the parent element, right? What would you use?
-
-Also, the brushable feature is not working at all.
-
-I want to make some changes to improve the combination of brushing and tooltip:
-2. When my mouse is down, but my mouse position is within the brushing selection rectangle, I want the selection rectangle to be visible.
-3. After I brush to create some enlarged circles, I want the rest of circles still able to be hovered to show tooltips when I hovered them.
-Tell me your thoughts and write me a gracefully implemented React component in the most elegant way, with d3.js as if written by Mike Bostock */}
-            <Scatterplot
-              data={data}
-             
-            ></Scatterplot>
+                     <Scatterplot data={data}></Scatterplot>
           </div>
           {isDesktop && (
             <div className="annotation-section mt-4">
@@ -262,6 +262,7 @@ Tell me your thoughts and write me a gracefully implemented React component in t
           <button className="download-button w-full">Download data</button>
         </footer>
       )}
+      </MapProvider>
     </>
   );
 }
