@@ -124,7 +124,7 @@ const USMap = ({ width = 975, height = 610 }) => {
   }, [drawMap]);
 
   return (
-    <canvas ref={canvasRef} width={width} height={height} />
+    <canvas ref={canvasRef} width={width} height={height} className='w-full' />
   );
 };
 

@@ -173,7 +173,8 @@ const Scatterplot = ({ data }) => {
       .attr("cx", (d) => x(d[x_variable]))
       .attr("cy", (d) => y(d[y_variable]))
       .attr("r", 3)
-      .attr("fill", (d) => d.color);
+      .attr("fill", (d) => d.color)
+      // .style("mix-blend-mode", "multiply")
     // Add this after creating the dots
     g.append("line")
       .attr("x1", 0)
