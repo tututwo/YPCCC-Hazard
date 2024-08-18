@@ -1,6 +1,7 @@
+// @ts-nocheck
 "use client";
 /* eslint-disable react/display-name */
-// @ts-nocheck
+
 import * as React from "react";
 import {
   useReactTable,
@@ -24,9 +25,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { format } from "d3-format";
+import TableTailwind from "./TableTailwindCSS";
 
-const formatDecimal = format(".1f");
+import * as d3 from "d3";
+const colorScheme = "Reds";
+const colorScale = d3
+  .scaleSequential(d3[`interpolate${colorScheme}`])
+  .domain([-1, 1]);
+const formatDecimal = d3.format(".1f");
 
 const createSortableHeader =
   (label: string) =>
@@ -58,24 +64,27 @@ const columns = [
     accessorKey: "county",
     header: createSortableHeader("County"),
     cell: ({ getValue }) => getValue().replace(" County", ""),
+    size: 150,
   },
   {
     accessorKey: "state",
     header: createSortableHeader("State"),
+    size: 150,
   },
   {
     accessorKey: "gap_cc_heatscore",
-    header: createSortableHeader("Gap Score"),
+    header: createSortableHeader("Gap"),
     cell: ({ getValue }) => formatDecimal(getValue()),
+    size: 50,
   },
   {
     accessorKey: "L_cc_heatscore",
-    header: createSortableHeader("Heat Risk"),
+    header: createSortableHeader("Risk"),
     cell: ({ getValue }) => formatDecimal(getValue()),
   },
   {
     accessorKey: "R_heat_worry",
-    header: createSortableHeader("Heat Worry"),
+    header: createSortableHeader("Worry"),
     cell: ({ getValue }) => formatDecimal(getValue()),
   },
 ];
@@ -89,36 +98,32 @@ export default function DataTableDemo({ data }) {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(), // Add this line
+    getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters, // Add this line
+    globalFilterFn: "includesString", // Use the built-in filter function
     state: {
       sorting,
-      columnFilters, // Add this line
+      globalFilter: filterValue, // Use globalFilter instead of columnFilters
     },
+    onGlobalFilterChange: setFilterValue,
   });
+  const [hoveredRowIndex, setHoveredRowIndex] = React.useState<number | null>(
+    null
+  );
 
   const { rows } = table.getRowModel();
 
   const parentRef = React.useRef<HTMLDivElement>(null);
+  const tableRef = React.useRef<HTMLTableElement>(null);
 
   // Update the virtualizer to use the filtered rows count
   const virtualizer = useVirtualizer({
     count: table.getFilteredRowModel().rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
-    overscan: 10,
+    overscan: 20, // 20 rows to render before and after the visible area
+    initialOffset: 0, // start at the top of the table
   });
-
-  const filteredRows = React.useMemo(() => {
-    return rows.filter((row) =>
-      row
-        .getValue("county")
-        .toString()
-        .toLowerCase()
-        .includes(filterValue.toLowerCase())
-    );
-  }, [rows, filterValue]);
 
   return (
     <div className="">
@@ -131,17 +136,17 @@ export default function DataTableDemo({ data }) {
         className="max-w-sm mb-4"
       />
 
-      <div
-        ref={parentRef}
-        className="max-h-screen"
-        style={{ overflow: "auto" }}
-      >
-        <Table>
-          <TableHeader>
+      <div ref={parentRef} className="h-screen overflow-auto relative">
+        <Table className="grid">
+          <TableHeader className="grid sticky top-0 z-50 bg-white">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="flex w-full">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="pl-0">
+                  <TableHead
+                    key={header.id}
+                    className="flex"
+                    style={{ width: header.getSize() + "px" }}
+                  >
                     {header.isPlaceholder ? null : (
                       <div
                         className={`${
@@ -162,18 +167,43 @@ export default function DataTableDemo({ data }) {
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody
+            className="grid relative"
+            style={{ height: virtualizer.getTotalSize() + "px" }}
+          >
             {virtualizer.getVirtualItems().map((virtualRow) => {
-              const row = table.getRowModel().rows[virtualRow.index];
-              if (!row) return null; // Add this check
+              const row = rows[virtualRow.index];
+              if (!row) return null;
               return (
-                <TableRow key={row.id} data-index={virtualRow.index}>
+                <TableRow
+                  key={row.id}
+                  data-index={virtualRow.index}
+                  ref={(node) => virtualizer.measureElement(node)}
+                  className="flex absolute w-full z-30 transition-colors duration-200 hover:bg-gray-100 cursor-pointer"
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
+                  onMouseLeave={() => setHoveredRowIndex(null)}
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-1 pl-0 text-nowrap min-w-[144px]">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                    <TableCell
+                      key={cell.id}
+                      className="flex py-1 pl-0 truncate z-10 pointer-events-none"
+                      style={{
+                        width: cell.column.getSize() + "px",
+                        backgroundColor:
+                          cell.column.id === "gap_cc_heatscore"
+                            ? colorScale(cell.getValue())
+                            : "transparent",
+                      }}
+                    >
+                      <div className="truncate">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
                     </TableCell>
                   ))}
                 </TableRow>
