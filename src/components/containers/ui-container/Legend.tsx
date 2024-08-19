@@ -3,16 +3,16 @@ import React from "react";
 const ColorLegend = ({ onSelectColor }) => {
   const colors = [
     { value: 1.0, color: "#b91c1c" },
-    { value: 0.9, color: "#dc2626" },
-    { value: 0.8, color: "#ef4444" },
-    { value: 0.7, color: "#f87171" },
-    { value: 0.6, color: "#fca5a5" },
-    { value: 0.5, color: "#fecaca" },
-    { value: 0.4, color: "#9ca3af" },
-    { value: 0.3, color: "#6b7280" },
-    { value: 0.2, color: "#4b5563" },
-    { value: 0.1, color: "#374151" },
-    { value: 0.0, color: "none" },
+    { value: 0.8, color: "#dc2626" },
+    { value: 0.6, color: "#ef4444" },
+    { value: 0.4, color: "#f87171" },
+    { value: 0.2, color: "#fca5a5" },
+    { value: 0.0, color: "#fecaca" },
+    { value: -0.2, color: "#9ca3af" },
+    { value: -0.4, color: "#6b7280" },
+    { value: -0.6, color: "#4b5563" },
+    { value: -0.8, color: "#374151" },
+    { value: -1.0, color: "none" },
   ];
 
   const containerHeight = colors.length * 24 + (colors.length - 1) * 2; // 24px for each color bar, 2px for gaps

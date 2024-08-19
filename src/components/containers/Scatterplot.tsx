@@ -1,42 +1,31 @@
 // @ts-nocheck
+"use client";
 import React, { useRef, useEffect, useState } from "react";
 import * as d3 from "d3";
 import { Delaunay } from "d3-delaunay";
 import { scaleThreshold } from "d3-scale";
-
+import { regressionLinear } from "d3-regression";
+import { pointToLineDistance } from "@turf/point-to-line-distance";
+import { lineString, point } from "@turf/helpers";
 // Add these constants for your color scales
-const redColors = [
-  "#67000d",
-  "#a50f15",
-  "#cb181d",
-  "#ef3b2c",
-  "#fb6a4a",
-  "#fc9272",
-  "#fcbba1",
-  "#fee0d2",
-  "#fff5f0",
-];
-const grayColors = [
-  "#252525",
-  "#525252",
-  "#737373",
-  "#969696",
-  "#bdbdbd",
-  "#d9d9d9",
-  "#f0f0f0",
-  "#ffffff",
-];
+const redColors = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"];
+const grayColors = ["#374151", "#4b5563", "#6b7280", "#9ca3af", "lightgray"];
 
-function calculateSlope(x1, y1, x2, y2) {
-  return (y2 - y1) / (x2 - x1);
+function distanceFromPointToLine(pointCoord, linePoint1, linePoint2) {
+  // Calculate the numerator of the distance formula
+
+  const pt = point(pointCoord);
+  const line = lineString([linePoint1, linePoint2]);
+
+  const distance = pointToLineDistance(pt, line, { units: "miles" });
+  // Return the distance
+  return distance;
 }
-
 function distanceFromLine(x, y, x1, y1, x2, y2) {
   const numerator = Math.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1);
   const denominator = Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
   return numerator / denominator;
 }
-
 const x_variable = "L_cc_heatscore";
 const y_variable = "R_heat_worry";
 const scaleSizeOfCircles = 6;
@@ -83,34 +72,31 @@ const Scatterplot = ({ data }) => {
     //   NOTE: Scales
     const x = d3
       .scaleLinear()
-      .domain(d3.extent(data, (d) => d.L_cc_heatscore))
+      .domain(d3.extent(data, (d) => d[x_variable]))
       .range([0, width])
       .nice();
 
     const y = d3
       .scaleLinear()
-      .domain(d3.extent(data, (d) => d.R_heat_worry))
+      .domain(d3.extent(data, (d) => d[y_variable]))
       .range([height, 0])
       .nice();
-
+    const regressionDatum = regressionLinear()
+      .x((d) => d[x_variable])
+      .y((d) => d[y_variable])
+      .domain([20, 100])(data);
     // NOTE: Color scales
+    console.log(regressionDatum);
 
-    // Replace the existing slope calculation with this
-    const slope = calculateSlope(0, height, width, 0);
-    const intercept = height; // The line now starts at (0, height)
-    // Color scales
-    const maxDistance = Math.max(
-      ...data.map((d) =>
-        distanceFromLine(
-          x(d[x_variable]),
-          y(d[y_variable]),
-          0,
-          height,
-          width,
-          0
-        )
-      )
-    );
+    data.forEach((d) => {
+      d.colorValue = distanceFromPointToLine(
+        [x(d[x_variable]), y(d[y_variable])],
+        regressionDatum[0].map(x),
+        regressionDatum[1].map(y)
+      );
+    });
+
+    const maxDistance = d3.extent(data, (d) => d.colorValue)[1];
 
     const grayScale = scaleThreshold()
       .domain(
@@ -132,11 +118,10 @@ const Scatterplot = ({ data }) => {
     const coloredData = data.map((d) => {
       const xPos = x(d[x_variable]);
       const yPos = y(d[y_variable]);
-      const distance = distanceFromLine(xPos, yPos, 0, height, width, 0);
-      const isAbove = yPos < -slope * xPos + intercept;
+      const isAbove = regressionDatum.predict(d[x_variable]) > d[y_variable];
       return {
         ...d,
-        color:  redScale(distance),
+        color: isAbove ? redScale(d.colorValue) : grayScale(d.colorValue),
       };
     });
 
@@ -173,17 +158,17 @@ const Scatterplot = ({ data }) => {
       .attr("cx", (d) => x(d[x_variable]))
       .attr("cy", (d) => y(d[y_variable]))
       .attr("r", 3)
-      .attr("fill", (d) => d.color)
-      // .style("mix-blend-mode", "multiply")
+      .attr("fill", (d) => d.color);
+    // .style("mix-blend-mode", "multiply")
     // Add this after creating the dots
     g.append("line")
-      .attr("x1", 0)
-      .attr("y1", height)
-      .attr("x2", width)
-      .attr("y2", 0)
-      .attr("stroke", "black")
-      .attr("stroke-width", 1)
-      .attr("stroke-dasharray", "5,5");
+      .attr("x1", x(regressionDatum[0][0]))
+      .attr("y1", y(regressionDatum[0][1]))
+      .attr("x2", x(regressionDatum[1][0]))
+      .attr("y2", y(regressionDatum[1][1]))
+      .attr("stroke", "grey")
+      .attr("stroke-width", 3)
+      .attr("stroke-dasharray", "35,15");
     const brushGroup = g.append("g").attr("class", "brush").call(brush).lower(); // Ensure brush is below other interactive elements
 
     let storedSelection = null;

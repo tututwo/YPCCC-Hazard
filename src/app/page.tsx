@@ -251,7 +251,9 @@ export default function Home() {
               <h2 className="text-lg font-bold ml-8">
                 Heat worry and Heat rating of all counties
               </h2>
-              <Scatterplot data={data}></Scatterplot>
+              <figure className="w-full h-full">
+                <Scatterplot data={data}></Scatterplot>
+              </figure>
             </div>
             {isDesktop && (
               <div className="annotation-section mt-4">
