@@ -28,16 +28,23 @@ import {
   useContext,
   useRef,
   useLayoutEffect,
+  useCallback,
 } from "react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
-// NOTE: Custom Library
+// NOTE: Custom UI Components
 import Scatterplot from "@/components/containers/Scatterplot";
 import Map from "@/components/containers/Map";
 import DeckglMap from "@/components/containers/DeckglMap";
 import Legend from "@/components/containers/ui-container/Legend";
 import { MapProvider } from "@/lib/context";
 import StateButton from "@/components/containers/ui-container/StateButton";
+import ExpandableSection from "@/components/containers/ExpandableSection";
+import ExpandButton from "@/components/ui/expandButton";
+
+// NOTE: Styles
+import "../styles/InputButton.css";
+
 const categories = [
   {
     name: "Heat",
@@ -51,14 +58,16 @@ const categories = [
 gsap.registerPlugin(useGSAP);
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
-  const [isSideBarOpen, setIsSideBarOpen] = useState(true);
-  const [expandedCategory, setExpandedCategory] = useState("Heat");
-  const [selectedSubcategory, setSelectedSubcategory] = useState("Heat gap");
-  const [backgroundStyle, setBackgroundStyle] = useState({});
   const [data, setData] = useState([]);
-  const buttonRefs = useRef([]);
-  const containerRef = useRef(null);
-  const backgroundRef = useRef(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleMouseEnter = useCallback(() => {
+    setIsExpanded(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsExpanded(false);
+  }, []);
   useEffect(() => {
     csv(
       "https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv",
@@ -76,154 +85,29 @@ export default function Home() {
     setIsDesktop(window.innerWidth >= 820);
   }, []);
 
-  const expandCollapseLeft = () => {
-    setIsSideBarOpen(!isSideBarOpen);
-  };
-
-  const toggleCategory = (categoryName) => {
-    setExpandedCategory(
-      expandedCategory === categoryName ? null : categoryName
-    );
-  };
-  const category = categories.find((cat) => cat.name === expandedCategory);
-  useLayoutEffect(() => {
-    const updateBackgroundPosition = () => {
-      const selectedIndex = category.subcategories.indexOf(selectedSubcategory);
-      if (selectedIndex !== -1 && buttonRefs.current[selectedIndex]) {
-        const button = buttonRefs.current[selectedIndex];
-        const container = containerRef.current;
-
-        if (container && button) {
-          const rect = button.getBoundingClientRect();
-          const containerRect = container.getBoundingClientRect();
-
-          setBackgroundStyle({
-            top: `${rect.top - containerRect.top}px`,
-            height: `${rect.height}px`,
-          });
-        }
-      }
-    };
-
-    updateBackgroundPosition();
-    // Add a small delay to ensure DOM has updated
-    const timer = setTimeout(updateBackgroundPosition, 0);
-    return () => clearTimeout(timer);
-  }, [selectedSubcategory, category.subcategories]);
   return (
     <>
+      <Input
+        id="sidebar-toggle"
+        type="checkbox"
+        title="Toggle sidebar"
+        onClick={handleMouseEnter}
+        overrideClassName
+        className="z-50"
+      />
       <MapProvider>
-        <Button variant={"outline"} onClick={expandCollapseLeft}>
-          {" "}
-          <svg
-            role="graphics-symbol"
-            viewBox="0 0 16 16"
-            className={`size-[16px] transition-transform duration-300 ${
-              isSideBarOpen ? "rotate-0" : "rotate-180"
-            }`}
-          >
-            <path d="M7.07031 13.8887C7.2207 14.0391 7.40527 14.1211 7.62402 14.1211C8.06836 14.1211 8.41699 13.7725 8.41699 13.3281C8.41699 13.1094 8.32812 12.9043 8.17773 12.7539L3.37207 8.05762L8.17773 3.375C8.32812 3.21777 8.41699 3.0127 8.41699 2.80078C8.41699 2.35645 8.06836 2.00781 7.62402 2.00781C7.40527 2.00781 7.2207 2.08984 7.07031 2.24023L1.73828 7.44922C1.56055 7.62012 1.46484 7.8252 1.46484 8.06445C1.46484 8.29688 1.55371 8.49512 1.73828 8.67969L7.07031 13.8887ZM13.1748 13.8887C13.3252 14.0391 13.5098 14.1211 13.7354 14.1211C14.1797 14.1211 14.5283 13.7725 14.5283 13.3281C14.5283 13.1094 14.4395 12.9043 14.2891 12.7539L9.4834 8.05762L14.2891 3.375C14.4395 3.21777 14.5283 3.0127 14.5283 2.80078C14.5283 2.35645 14.1797 2.00781 13.7354 2.00781C13.5098 2.00781 13.3252 2.08984 13.1748 2.24023L7.84961 7.44922C7.66504 7.62012 7.57617 7.8252 7.56934 8.06445C7.56934 8.29688 7.66504 8.49512 7.84961 8.67969L13.1748 13.8887Z"></path>
-          </svg>
-        </Button>
-
-        <main className="flex-grow min-h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full border-4 m-4">
+        <main className="flex-grow min-h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full  relative overflow-hidden">
+          <ExpandableSection
+            isExpanded={isExpanded}
+            isDesktop={isDesktop}
+            categories={categories}
+          ></ExpandableSection>
           {/* NOTE: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
-          <aside
-            className={`desktop:flex-grow flex-shrink-0 p-1 flex flex-col min-h-0 bg-[#E2E2E2] w-full transition-all duration-300 ease-in-out ${
-              isSideBarOpen ? "desktop:w-1/6" : "desktop:w-0 overflow-hidden"
-            } space-y-4`}
-            id="side-bar"
+
+          <section
+            className="w-full desktop:flex-grow desktop:flex-shrink pl-6 pr-4 flex flex-col"
+            onMouseEnter={handleMouseLeave}
           >
-            <div className="w-full">
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="US" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="apple">US</SelectItem>
-                    <SelectItem value="banana">Canada</SelectItem>
-                    <SelectItem value="blueberry">UK</SelectItem>
-                    <SelectItem value="grapes">China</SelectItem>
-                    <SelectItem value="pineapple">India</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <h1 className="text-xl  py-2">Reality- Perception Gap</h1>
-
-            {isDesktop && (
-              <div className="flex-grow flex flex-col justify-between">
-                <section className="mb-4">
-                  {categories.map((category, i) => (
-                    <div key={category.name} className="overflow-hidden ">
-                      <button
-                        onClick={() => toggleCategory(category.name)}
-                        className={`${
-                          i === 0 ? "border-t-0" : "border-t-2"
-                        } border-[lightgrey] w-full py-1 px-2 text-left font-thin flex justify-between items-center text-sm`}
-                      >
-                        <h3>{category.name}</h3>
-                        <svg
-                          className={`size-4 transition-transform duration-300 ${
-                            expandedCategory === category.name
-                              ? "rotate-180"
-                              : ""
-                          }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </button>
-                      <div
-                        className={`transition-all duration-300 ease-in-out ${
-                          expandedCategory === category.name
-                            ? "max-h-96 opacity-100"
-                            : "max-h-0 opacity-0"
-                        } overflow-hidden`}
-                      >
-                        <ul ref={containerRef} className="relative py-1">
-                          <li
-                            className="absolute left-0 w-full bg-[#B5B5B5] transition-all duration-300 ease-in-out"
-                            style={backgroundStyle}
-                          />
-
-                          {category.subcategories.map((subcategory, index) => (
-                            <li key={subcategory} className="relative">
-                              <button
-                                onClick={() =>
-                                  setSelectedSubcategory(subcategory)
-                                }
-                                ref={(el) => (buttonRefs.current[index] = el)}
-                                className={`w-full text-left text-xs p-2 hover:cursor-pointer relative z-10 ${
-                                  selectedSubcategory === subcategory
-                                    ? "text-white"
-                                    : "hover:bg-gray-100"
-                                }`}
-                              >
-                                {subcategory}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  ))}
-                </section>
-                <footer className="mt-auto">2024</footer>
-              </div>
-            )}
-          </aside>
-
-          <section className="w-full desktop:flex-grow desktop:flex-shrink pl-2 pr-4 flex flex-col">
             {isDesktop && (
               <div className="legend mb-4 min-w-[240px]">
                 {" "}
@@ -238,13 +122,13 @@ export default function Home() {
               className="flex-grow max-h-[50vh] flex flex-col desktop:flex-row"
               id="map-container"
             >
-              <section className="flex-grow md:order-2 relative">
+              <section className="flex-grow md:order-2 relative z-20">
                 {/* <Map width={1200} height={500} /> */}
                 <DeckglMap width={1200} height={500} />
               </section>
-              <section className="h-64 md:h-auto desktop:w-[100px] md:order-1">
+              {/* <section className="h-64 md:h-auto desktop:w-[100px] md:order-1">
                 <Legend></Legend>
-              </section>
+              </section> */}
             </div>
 
             <div className="mt-4 flex-grow" id="scatterplot-container">
@@ -263,7 +147,7 @@ export default function Home() {
           </section>
 
           {isDesktop ? (
-            <aside className="w-full desktop:w-1/5 flex-shrink-0 p-4">
+            <aside className="w-full desktop:w-1/4 flex-shrink-0 pr-1 ">
               <Button
                 asChild
                 className="bg-[#E8E8E8] w-full min-h-[4rem] text-xl rounded-none text-slate-950 font-bold"

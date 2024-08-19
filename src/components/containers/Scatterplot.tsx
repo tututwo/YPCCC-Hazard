@@ -86,7 +86,7 @@ const Scatterplot = ({ data }) => {
       .y((d) => d[y_variable])
       .domain([20, 100])(data);
     // NOTE: Color scales
-    console.log(regressionDatum);
+
 
     data.forEach((d) => {
       d.colorValue = distanceFromPointToLine(
