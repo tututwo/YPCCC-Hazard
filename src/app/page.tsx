@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import countyGeoJSON from "../../public/counties_with_statename.json";
+import counties from "../../public/finalGEOJSON.json";
 // NOTE: UI library
 import { Button } from "@/components/ui/button";
 import {
@@ -147,7 +147,7 @@ export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [counties, setCounties] = useState(countyGeoJSON);
+
   const handleMouseEnter = useCallback(() => {
     setIsExpanded(true);
   }, []);
@@ -164,13 +164,6 @@ export default function Home() {
         d.R_heat_worry = +d.R_heat_worry;
       });
       setData(loadedData);
-
-
-      const modifiedGeojsonData = counties.features.filter((d) =>
-        loadedData.find((e) => e.geoid === d.properties.GEOID)
-      );
-     
-      setCounties({ type: "FeatureCollection", features: modifiedGeojsonData });
     });
   }, []);
 

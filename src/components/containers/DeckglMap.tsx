@@ -1,7 +1,13 @@
 // @ts-nocheck
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import * as d3 from "d3";
 import { geoAlbers, geoMercator, geoOrthographic } from "d3-geo";
 
@@ -68,39 +74,61 @@ const DeckglMap = ({
   colorScale,
 }) => {
   const { selectedState } = useMapContext();
-  const [initialViewState, setInitialViewState] = useState<MapViewState>(
-    zoomToWhichState.Michigan
-  );
+  const [initialViewState, setInitialViewState] = useState<MapViewState>({
+    longitude: -98.5795, // Roughly the center of the US
+    latitude: 39.8283,
+    zoom: 3, // Adjust this value to fit the entire US in view
+    pitch: 0,
+    bearing: 0,
+  });
 
   const mapRef = useRef(null);
 
   useEffect(() => {
-    setInitialViewState({
-      ...zoomToWhichState[selectedState.name],
-      transitionInterpolator: new FlyToInterpolator({ speed: 2 }),
-      transitionDuration: "auto",
-    });
+    if (selectedState.name === "US") {
+      setInitialViewState({
+        longitude: -98.5795, // Roughly the center of the US
+        latitude: 39.8283,
+        zoom: 3.8, // Adjust this value to fit the entire US in view
+        pitch: 0,
+        bearing: 0,
+      });
+    } else {
+      setInitialViewState({
+        ...zoomToWhichState[selectedState.name],
+        transitionInterpolator: new FlyToInterpolator({ speed: 2 }),
+        transitionDuration: "auto",
+      });
+    }
   }, [selectedState]);
 
-  const layers = [
-    new GeoJsonLayer({
-      id: "geojson-layer",
-      data: geographyData,
-      fill: true,
-      getFillColor: (d, i) => {
-        console.log(d)
-        const { r, g, b, a } = d3.color(colorScale(i.index)) ?? {
-          r: 0,
-          g: 0,
-          b: 0,
-          a: 255,
-        };
-        return [r, g, b, a];
-      },
-      getLineColor: [255, 255, 255],
-      getLineWidth: 1,
-    }),
-  ];
+  const layers = useMemo(
+    () => [
+      new GeoJsonLayer({
+        id: "geojson-layer",
+        data: geographyData,
+        getFillColor: (d) => {
+          const { r, g, b } = d3.color(
+            colorScale(d.properties.gap_cc_heatscore)
+          );
+          let a;
+          if (selectedState.name === "US") {
+            a = 255;
+          } else {
+            a = d.properties.STATENAME === selectedState.name ? 255 : 80;
+          }
+
+          return [r, g, b, a];
+        },
+        getLineColor: [255, 255, 255],
+        getLineWidth: 1,
+        updateTriggers: {
+          getFillColor: [selectedState, colorScale],
+        },
+      }),
+    ],
+    [geographyData, selectedState, colorScale]
+  );
 
   return (
     <map ref={mapRef} style={{ width: "100%", height: "100%" }}>

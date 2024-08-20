@@ -4,7 +4,7 @@ import React, { createContext, useState, useContext } from 'react';
 const MapContext = createContext();
 
 export function MapProvider({ children }) {
-  const [selectedState, setSelectedState] = useState({ id: 5, name: 'Michigan' });
+  const [selectedState, setSelectedState] = useState({ id: 0, name: 'US' });
 
   return (
     <MapContext.Provider value={{ selectedState, setSelectedState }}>
