@@ -213,7 +213,7 @@ const people = [
     name: "US",
   },
 ];
-
+people.sort((a, b) => a.name.localeCompare(b.name));
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }

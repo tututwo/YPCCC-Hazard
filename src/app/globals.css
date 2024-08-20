@@ -67,3 +67,10 @@
     @apply bg-background text-foreground;
   }
 }
+.maplibregl-control-container {
+  display: none;
+}
+
+.maplibregl-map:last-child {
+  display: none;  
+}

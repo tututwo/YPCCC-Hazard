@@ -10,14 +10,13 @@ import React, {
 } from "react";
 import * as d3 from "d3";
 import { geoAlbers, geoMercator, geoOrthographic } from "d3-geo";
-
+import { Map } from "react-map-gl/maplibre";
 import { feature, mesh } from "topojson-client";
 import { useMapContext } from "@/lib/context";
 
 import DeckGL from "@deck.gl/react";
 import { MapViewState, FlyToInterpolator } from "@deck.gl/core";
 import { LineLayer, GeoJsonLayer } from "@deck.gl/layers";
-import { Map } from "react-map-gl";
 
 const CARTO_BASEMAP =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
@@ -92,10 +91,12 @@ const DeckglMap = ({
         zoom: 3.8, // Adjust this value to fit the entire US in view
         pitch: 0,
         bearing: 0,
+        minZoom: 3,
       });
     } else {
       setInitialViewState({
         ...zoomToWhichState[selectedState.name],
+        minZoom: 3,
         transitionInterpolator: new FlyToInterpolator({ speed: 2 }),
         transitionDuration: "auto",
       });
@@ -136,7 +137,14 @@ const DeckglMap = ({
         initialViewState={initialViewState}
         controller={true}
         layers={layers}
-      ></DeckGL>
+      >
+        <Map
+          reuseMaps
+          mapStyle={
+            "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json"
+          }
+        />
+      </DeckGL>
     </map>
   );
 };

@@ -28,10 +28,7 @@ import { Button } from "@/components/ui/button";
 import TableTailwind from "./TableTailwindCSS";
 
 import * as d3 from "d3";
-const colorScheme = "Reds";
-const colorScale = d3
-  .scaleSequential(d3[`interpolate${colorScheme}`])
-  .domain([-1, 1]);
+
 const formatDecimal = d3.format(".1f");
 
 const createSortableHeader =
@@ -89,7 +86,7 @@ const columns = [
   },
 ];
 // eslint-disable-next-line react/display-name
-export default function DataTableDemo({ data }) {
+export default function DataTableDemo({ data,colorScale }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [filterValue, setFilterValue] = React.useState("");
   const [columnFilters, setColumnFilters] = React.useState([]);

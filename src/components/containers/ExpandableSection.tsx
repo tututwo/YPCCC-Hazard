@@ -1,3 +1,5 @@
+// @ts-nocheck
+"use client";
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import {
   Select,

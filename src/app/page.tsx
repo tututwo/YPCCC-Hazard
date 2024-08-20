@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from 'next/dynamic';
 import counties from "../../public/finalGEOJSON.json";
 // NOTE: UI library
 import { Button } from "@/components/ui/button";
@@ -64,11 +65,11 @@ gsap.registerPlugin(useGSAP);
 
 // NOTE: zoom-to-state metrics
 
-function calculateStateViewsFromCounties(
+const calculateStateViewsFromCounties = dynamic(() => Promise.resolve((
   countyGeoJSON: FeatureCollection,
   width = 800, // Default width is 800
   height = 600
-) {
+)=>{
   const zoomToWhichState = {};
   const stateFeatures = {};
 
@@ -129,18 +130,27 @@ function calculateStateViewsFromCounties(
       zoomToWhichState[stateName] = {
         longitude: centerLng,
         latitude: centerLat,
-        zoom: viewport.zoom,
+        zoom: Math.floor(viewport.zoom),
       };
     }
   });
 
   return zoomToWhichState;
-}
-const colorScale = d3.scaleLinear<string>()
+}), { ssr: false });
+const colorScale = d3
+  .scaleLinear<string>()
   .domain([-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1])
   .range([
-    "#374151", "#4b5563", "#6b7280", "#9ca3af", "#fecaca",
-    "#fca5a5", "#f87171", "#ef4444", "#dc2626", "#b91c1c"
+    "#374151",
+    "#4b5563",
+    "#6b7280",
+    "#9ca3af",
+    "#fecaca",
+    "#fca5a5",
+    "#f87171",
+    "#ef4444",
+    "#dc2626",
+    "#b91c1c",
   ])
   .interpolate(d3.interpolateRgb);
 export default function Home() {
@@ -241,8 +251,18 @@ export default function Home() {
               <h2 className="text-lg font-bold ml-8">
                 Heat worry and Heat rating of all counties
               </h2>
-              <figure className="w-full h-full">
-                <Scatterplot data={data}></Scatterplot>
+              <figure className="w-full h-full max-h-[50vh]">
+                <ParentSize>
+                  {({ width, height, top, left }) => {
+                    return (
+                      <Scatterplot
+                        data={data}
+                        width={width}
+                        height={height}
+                      ></Scatterplot>
+                    );
+                  }}
+                </ParentSize>
               </figure>
             </div>
             {isDesktop && (
@@ -253,7 +273,7 @@ export default function Home() {
           </section>
 
           {isDesktop ? (
-            <aside className="w-full desktop:w-1/4 flex-shrink-0 pr-1 ">
+            <aside className="w-full desktop:w-1/3 flex-shrink-0 pr-1 ">
               <Button
                 asChild
                 className="bg-[#E8E8E8] w-full min-h-[4rem] text-xl rounded-none text-slate-950 font-bold"
@@ -264,7 +284,10 @@ export default function Home() {
                 <b className="text-xl">3143 Counties</b> in the US
               </div>
               <div className="table-container">
-                <DataTableDemo data={data}></DataTableDemo>
+                <DataTableDemo
+                  data={data}
+                  colorScale={colorScale}
+                ></DataTableDemo>
               </div>
 
               <Button variant={"ghost"} className="w-full flex text-lg">
