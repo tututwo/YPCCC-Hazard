@@ -12,9 +12,7 @@ import DeckGL from "@deck.gl/react";
 import { MapViewState, FlyToInterpolator } from "@deck.gl/core";
 import { LineLayer, GeoJsonLayer } from "@deck.gl/layers";
 import { Map } from "react-map-gl";
-const colorScale = d3
-  .scaleSequential(d3[`interpolate${"Rainbow"}`])
-  .domain([0, 50]);
+
 const CARTO_BASEMAP =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
@@ -62,87 +60,35 @@ const calculateBBox = (features) => {
     : null;
 };
 
-const DeckglMap = ({ width = 975, height = 610 }) => {
-  const [geographyData, setGeographyData] = useState(null);
-  const [csvData, setCSVData] = useState([]);
+const DeckglMap = ({
+  width = 975,
+  height = 610,
+  zoomToWhichState,
+  geographyData,
+  colorScale,
+}) => {
   const { selectedState } = useMapContext();
-  const [viewState, setViewState] = useState({
-    latitude: 40,
-    longitude: -100,
-    zoom: 3,
-    bearing: 0,
-    pitch: 0,
-  });
-  const [projectedGeography, setProjectedGeography] = useState(null);
+  const [initialViewState, setInitialViewState] = useState<MapViewState>(
+    zoomToWhichState.Michigan
+  );
+
   const mapRef = useRef(null);
-  const onResize = useCallback(() => {
-    if (mapRef.current) {
-      const { clientWidth, clientHeight } = mapRef.current;
-      setViewState((prev) => ({
-        ...prev,
-        width: clientWidth,
-        height: clientHeight,
-      }));
-    }
-  }, []);
 
   useEffect(() => {
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [onResize]);
-  useEffect(() => {
-    (async () => {
-      const csvData = await d3.csv("/data.csv");
-      const geojsonData = await d3.json("/counties.json");
-      const modifiedGeojsonData = geojsonData.features.filter((d) =>
-        csvData.find((e) => e.geoid === d.id)
-      );
-      modifiedGeojsonData.forEach((element) => {
-        element.properties.state = csvData.find(
-          (e) => e.geoid === element.id
-        ).state;
-      });
-      setGeographyData(modifiedGeojsonData);
-      setCSVData(csvData);
-    })();
-  }, []);
-  const getStateViewport = (features, stateName) => {
-    const stateFeatures = features.filter(
-      (f) => f.properties.state === stateName
-    );
-    if (stateFeatures.length === 0) return null;
+    setInitialViewState({
+      ...zoomToWhichState[selectedState.name],
+      transitionInterpolator: new FlyToInterpolator({ speed: 2 }),
+      transitionDuration: "auto",
+    });
+  }, [selectedState]);
 
-    const bbox = calculateBBox(stateFeatures);
-    if (!bbox) return null;
-
-    const [[minLng, minLat], [maxLng, maxLat]] = bbox;
-   
-    return {
-      longitude: (minLng + maxLng) / 2,
-      latitude: (minLat + maxLat) / 2,
-      zoom: 0.67 * Math.max(maxLng - minLng, maxLat - minLat),
-      transitionInterpolator: new FlyToInterpolator(),
-      transitionDuration: 2000,
-    };
-  };
-  useEffect(() => {
-    if (geographyData && selectedState && selectedState.name) {
-      const newViewState = getStateViewport(geographyData, selectedState.name);
-      if (newViewState) {
-        setViewState((prevState) => ({
-          ...prevState,
-          ...newViewState,
-        }));
-      }
-    }
-  }, [geographyData, selectedState]);
   const layers = [
     new GeoJsonLayer({
       id: "geojson-layer",
       data: geographyData,
       fill: true,
       getFillColor: (d, i) => {
+        console.log(d)
         const { r, g, b, a } = d3.color(colorScale(i.index)) ?? {
           r: 0,
           g: 0,
@@ -159,8 +105,7 @@ const DeckglMap = ({ width = 975, height = 610 }) => {
   return (
     <map ref={mapRef} style={{ width: "100%", height: "100%" }}>
       <DeckGL
-        viewState={viewState}
-        onViewStateChange={({ viewState }) => setViewState(viewState)}
+        initialViewState={initialViewState}
         controller={true}
         layers={layers}
       ></DeckGL>

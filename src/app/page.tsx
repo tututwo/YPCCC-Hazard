@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import countyGeoJSON from "../../public/counties_with_statename.json";
 // NOTE: UI library
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,10 @@ import {
 } from "react";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
+import * as turf from "@turf/turf";
+import { WebMercatorViewport } from "@deck.gl/core";
+
+import { useParentSize, ParentSize } from "@visx/responsive";
 // NOTE: Custom UI Components
 import Scatterplot from "@/components/containers/Scatterplot";
 import Map from "@/components/containers/Map";
@@ -56,11 +61,93 @@ const categories = [
   { name: "Drought", subcategories: ["Subcategory 1", "Subcategory 2"] },
 ];
 gsap.registerPlugin(useGSAP);
+
+// NOTE: zoom-to-state metrics
+
+function calculateStateViewsFromCounties(
+  countyGeoJSON: FeatureCollection,
+  width = 800, // Default width is 800
+  height = 600
+) {
+  const zoomToWhichState = {};
+  const stateFeatures = {};
+
+  // Group counties by state
+  countyGeoJSON.features.forEach((county: Feature<MultiPolygon>) => {
+    const stateName = county.properties?.STATENAME;
+    if (!stateFeatures[stateName]) {
+      stateFeatures[stateName] = [];
+    }
+    stateFeatures[stateName].push(county);
+  });
+
+  // Calculate view for each state
+  Object.entries(stateFeatures).forEach(([stateName, counties]) => {
+    // Combine all county polygons into a single multipolygon
+
+    let combined;
+
+    if (counties.length === 0) {
+      console.warn(`No counties found for state: ${stateName}`);
+      return;
+    } else if (counties.length === 1) {
+      combined = counties[0];
+    } else {
+      try {
+        combined = turf.union(turf.featureCollection(counties));
+        // combined = turf.union(...counties);
+      } catch (error) {
+        console.warn(`Error combining counties for ${stateName}:`, error);
+        combined = counties[0]; // Fallback to using the first county
+      }
+    }
+
+    const [minLng, minLat, maxLng, maxLat] = turf.bbox(combined);
+
+    const [centerLng, centerLat] =
+      turf.centerOfMass(combined).geometry.coordinates;
+
+    // Calculate zoom
+    const viewport = new WebMercatorViewport({ width, height }).fitBounds(
+      [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ],
+      {
+        padding: 20, // Add some padding
+      }
+    );
+
+    // Special case for state "a" (adjust as needed)
+    if (stateName === "a") {
+      zoomToWhichState[stateName] = {
+        longitude: centerLng,
+        latitude: centerLat,
+        zoom: 6,
+      };
+    } else {
+      zoomToWhichState[stateName] = {
+        longitude: centerLng,
+        latitude: centerLat,
+        zoom: viewport.zoom,
+      };
+    }
+  });
+
+  return zoomToWhichState;
+}
+const colorScale = d3.scaleLinear<string>()
+  .domain([-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1])
+  .range([
+    "#374151", "#4b5563", "#6b7280", "#9ca3af", "#fecaca",
+    "#fca5a5", "#f87171", "#ef4444", "#dc2626", "#b91c1c"
+  ])
+  .interpolate(d3.interpolateRgb);
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const [counties, setCounties] = useState(countyGeoJSON);
   const handleMouseEnter = useCallback(() => {
     setIsExpanded(true);
   }, []);
@@ -70,14 +157,20 @@ export default function Home() {
   }, []);
   useEffect(() => {
     csv(
-      "https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv",
-      d3.autotype
+      "https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv"
     ).then((loadedData) => {
       loadedData.forEach((d) => {
         d.L_cc_heatscore = +d.L_cc_heatscore;
         d.R_heat_worry = +d.R_heat_worry;
       });
       setData(loadedData);
+
+
+      const modifiedGeojsonData = counties.features.filter((d) =>
+        loadedData.find((e) => e.geoid === d.properties.GEOID)
+      );
+     
+      setCounties({ type: "FeatureCollection", features: modifiedGeojsonData });
     });
   }, []);
 
@@ -111,7 +204,7 @@ export default function Home() {
             {isDesktop && (
               <div className="legend mb-4 min-w-[240px]">
                 {" "}
-                <div className="flex w-full max-w-sm items-center space-x-2">
+                <div className="flex w-full max-w-sm items-center space-x-2 ">
                   <StateButton />
                   {/* <Input type="email" placeholder="Address" />
                 <Button type="submit">Search</Button> */}
@@ -122,10 +215,30 @@ export default function Home() {
               className="flex-grow max-h-[50vh] flex flex-col desktop:flex-row"
               id="map-container"
             >
-              <section className="flex-grow md:order-2 relative z-20">
-                {/* <Map width={1200} height={500} /> */}
+              <ParentSize>
+                {({ width, height, top, left }) => {
+                  const zoomToWhichState = calculateStateViewsFromCounties(
+                    counties,
+                    Math.max(100, width),
+                    Math.max(100, height)
+                  );
+                  return (
+                    <section className="flex-grow h-full md:order-2 relative z-10">
+                      <DeckglMap
+                        width={width}
+                        height={height}
+                        zoomToWhichState={zoomToWhichState}
+                        geographyData={counties}
+                        colorScale={colorScale}
+                      />
+                    </section>
+                  );
+                }}
+              </ParentSize>
+              {/* <section className="flex-grow md:order-2 relative z-10 ">
+                <Map width={1200} height={500} />
                 <DeckglMap width={1200} height={500} />
-              </section>
+              </section> */}
               {/* <section className="h-64 md:h-auto desktop:w-[100px] md:order-1">
                 <Legend></Legend>
               </section> */}
