@@ -36,6 +36,7 @@ import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import * as turf from "@turf/turf";
 import { WebMercatorViewport } from "@deck.gl/core";
+import calculateStateViewsFromCounties from "@/lib/calculateStateViews";
 
 import { useParentSize, ParentSize } from "@visx/responsive";
 // NOTE: Custom UI Components
@@ -65,78 +66,6 @@ gsap.registerPlugin(useGSAP);
 
 // NOTE: zoom-to-state metrics
 
-function calculateStateViewsFromCounties(
-  countyGeoJSON: FeatureCollection,
-  width = 800, // Default width is 800
-  height = 600
-) {
-  const zoomToWhichState = {};
-  const stateFeatures = {};
-
-  // Group counties by state
-  countyGeoJSON.features.forEach((county: Feature<MultiPolygon>) => {
-    const stateName = county.properties?.STATENAME;
-    if (!stateFeatures[stateName]) {
-      stateFeatures[stateName] = [];
-    }
-    stateFeatures[stateName].push(county);
-  });
-
-  // Calculate view for each state
-  Object.entries(stateFeatures).forEach(([stateName, counties]) => {
-    // Combine all county polygons into a single multipolygon
-
-    let combined;
-
-    if (counties.length === 0) {
-      console.warn(`No counties found for state: ${stateName}`);
-      return;
-    } else if (counties.length === 1) {
-      combined = counties[0];
-    } else {
-      try {
-        combined = turf.union(turf.featureCollection(counties));
-        // combined = turf.union(...counties);
-      } catch (error) {
-        console.warn(`Error combining counties for ${stateName}:`, error);
-        combined = counties[0]; // Fallback to using the first county
-      }
-    }
-
-    const [minLng, minLat, maxLng, maxLat] = turf.bbox(combined);
-
-    const [centerLng, centerLat] =
-      turf.centerOfMass(combined).geometry.coordinates;
-
-    // Calculate zoom
-    const viewport = new WebMercatorViewport({ width, height }).fitBounds(
-      [
-        [minLng, minLat],
-        [maxLng, maxLat],
-      ],
-      {
-        padding: 20, // Add some padding
-      }
-    );
-
-    // Special case for state "a" (adjust as needed)
-    if (stateName === "a") {
-      zoomToWhichState[stateName] = {
-        longitude: centerLng,
-        latitude: centerLat,
-        zoom: 6,
-      };
-    } else {
-      zoomToWhichState[stateName] = {
-        longitude: centerLng,
-        latitude: centerLat,
-        zoom: Math.floor(viewport.zoom),
-      };
-    }
-  });
-
-  return zoomToWhichState;
-}
 const colorScale = d3
   .scaleLinear<string>()
   .domain([-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1])
@@ -153,10 +82,27 @@ const colorScale = d3
     "#b91c1c",
   ])
   .interpolate(d3.interpolateRgb);
+
+const DynamicCalculateStateViews = dynamic(
+  () =>
+    import("@/lib/calculateStateViews").then(
+      (mod) => mod.calculateStateViewsFromCounties
+    ),
+  { ssr: false }
+);
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [zoomToWhichState, setZoomToWhichState] = useState({});
+  const { parentRef, width, height } = useParentSize();
+
+  useEffect(() => {
+    if (width > 0 && height > 0) {
+      const result = calculateStateViewsFromCounties(counties, width, height);
+      setZoomToWhichState(result);
+    }
+  }, [width, height]);
 
   const handleMouseEnter = useCallback(() => {
     setIsExpanded(true);
@@ -192,7 +138,7 @@ export default function Home() {
         className="z-50"
       />
       <MapProvider>
-        <main className="flex-grow min-h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full  relative overflow-hidden">
+        <main className="flex-grow h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full  relative overflow-hidden">
           <ExpandableSection
             isExpanded={isExpanded}
             isDesktop={isDesktop}
@@ -215,29 +161,22 @@ export default function Home() {
               </div>
             )}
             <div
-              className="flex-grow max-h-[50vh] flex flex-col desktop:flex-row"
+              className="flex-grow max-h-[70vh] flex flex-col desktop:flex-row"
               id="map-container"
             >
-              <ParentSize>
-                {({ width, height, top, left }) => {
-                  const zoomToWhichState = calculateStateViewsFromCounties(
-                    counties,
-                    Math.max(100, width),
-                    Math.max(100, height)
-                  );
-                  return (
-                    <section className="flex-grow h-full md:order-2 relative z-10">
-                      <DeckglMap
-                        width={width}
-                        height={height}
-                        zoomToWhichState={zoomToWhichState}
-                        geographyData={counties}
-                        colorScale={colorScale}
-                      />
-                    </section>
-                  );
-                }}
-              </ParentSize>
+              <section
+                ref={parentRef}
+                className="flex-grow h-full md:order-2 relative z-10"
+              >
+                <DeckglMap
+                  width={width}
+                  height={height}
+                  zoomToWhichState={zoomToWhichState}
+                  geographyData={counties}
+                  colorScale={colorScale}
+                />
+              </section>
+
               {/* <section className="flex-grow md:order-2 relative z-10 ">
                 <Map width={1200} height={500} />
                 <DeckglMap width={1200} height={500} />
@@ -251,7 +190,7 @@ export default function Home() {
               <h2 className="text-lg font-bold ml-8">
                 Heat worry and Heat rating of all counties
               </h2>
-              <figure className="w-full h-full max-h-[30vh]">
+              <figure className="w-full h-full">
                 <ParentSize>
                   {({ width, height, top, left }) => {
                     return (

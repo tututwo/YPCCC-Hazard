@@ -20,6 +20,7 @@ const DeckglMap = ({
   colorScale,
 }) => {
   const { selectedState } = useMapContext();
+
   const [initialViewState, setInitialViewState] = useState({
     longitude: -98.5795,
     latitude: 39.8283,

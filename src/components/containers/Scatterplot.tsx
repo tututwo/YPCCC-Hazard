@@ -16,7 +16,7 @@ import { lineString, point } from "@turf/helpers";
 
 // NOTE: VISX
 import { Group } from "@visx/group";
-import { Circle } from "@visx/shape";
+import { Circle, Line } from "@visx/shape";
 import { withTooltip, Tooltip } from "@visx/tooltip";
 import { WithTooltipProvidedProps } from "@visx/tooltip/lib/enhancers/withTooltip";
 import { voronoi, VoronoiPolygon } from "@visx/voronoi";
@@ -149,54 +149,6 @@ export default withTooltip<DotsProps, PointsRange>(
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-      // NOTE: Color scales
-
-      // data.forEach((d) => {
-      //   d.colorValue = distanceFromPointToLine(
-      //     [x(d[x_variable]), y(d[y_variable])],
-      //     regressionDatum[0].map(x),
-      //     regressionDatum[1].map(y)
-      //   );
-      // });
-
-      // const maxDistance = d3.extent(data, (d) => d.colorValue)[1];
-
-      // const grayScale = scaleThreshold()
-      //   .domain(
-      //     d3
-      //       .range(1, grayColors.length)
-      //       .map((i) => (i / grayColors.length) * maxDistance)
-      //   )
-      //   .range(grayColors.reverse()); // Reverse the order to make farther points darker
-
-      // const redScale = scaleThreshold()
-      //   .domain(
-      //     d3
-      //       .range(1, redColors.length)
-      //       .map((i) => (i / redColors.length) * maxDistance)
-      //   )
-      //   .range(redColors.reverse()); // Reverse the order to make farther points darker red
-
-      // // Add color property to data
-      // const coloredData = data.map((d) => {
-      //   const xPos = x(d[x_variable]);
-      //   const yPos = y(d[y_variable]);
-      //   const isAbove = regressionDatum.predict(d[x_variable]) > d[y_variable];
-      //   return {
-      //     ...d,
-      //     color: isAbove ? redScale(d.colorValue) : grayScale(d.colorValue),
-      //   };
-      // });
-
-      // NOTE: Add axes
-
-      // const delaunay = Delaunay.from(
-      //   data,
-      //   (d) => x(d.L_cc_heatscore),
-      //   (d) => y(d.R_heat_worry)
-      // );
-      // const voronoi = delaunay.voronoi([0, 0, width, height]);
-
       // const brush = d3
       //   .brush()
       //   .extent([
@@ -205,33 +157,6 @@ export default withTooltip<DotsProps, PointsRange>(
       //   ])
       //   .on("start brush end", brushed);
 
-      // const tooltip = d3
-      //   .select("body")
-      //   .append("div")
-      //   .attr("class", "tooltip")
-      //   .style("opacity", 0)
-      //   .style("position", "absolute")
-      //   .style("pointer-events", "none");
-
-      // const dots = g
-      //   .append("g")
-      //   .selectAll("circle")
-      //   .data(coloredData)
-      //   .join("circle")
-      //   .attr("cx", (d) => x(d[x_variable]))
-      //   .attr("cy", (d) => y(d[y_variable]))
-      //   .attr("r", 3)
-      //   .attr("fill", (d) => d.color);
-      // .style("mix-blend-mode", "multiply")
-      // Add this after creating the dots
-      g.append("line")
-        .attr("x1", x(regressionDatum[0][0]))
-        .attr("y1", y(regressionDatum[0][1]))
-        .attr("x2", x(regressionDatum[1][0]))
-        .attr("y2", y(regressionDatum[1][1]))
-        .attr("stroke", "grey")
-        .attr("stroke-width", 3)
-        .attr("stroke-dasharray", "35,15");
       // const brushGroup = g
       //   .append("g")
       //   .attr("class", "brush")
@@ -257,60 +182,6 @@ export default withTooltip<DotsProps, PointsRange>(
       //     storedSelection = null;
       //   }
       // }
-
-      // function updateCircles(selection) {
-      //   dots
-      //     .transition()
-      //     .duration(50)
-      //     .attr("r", (d) =>
-      //       selection &&
-      //       x(d[x_variable]) >= selection[0][0] &&
-      //       x(d[x_variable]) <= selection[1][0] &&
-      //       y(d[y_variable]) >= selection[0][1] &&
-      //       y(d[y_variable]) <= selection[1][1]
-      //         ? scaleSizeOfCircles
-      //         : 3
-      //     )
-      //     .attr("stroke", (d) =>
-      //       selection &&
-      //       x(d[x_variable]) >= selection[0][0] &&
-      //       x(d[x_variable]) <= selection[1][0] &&
-      //       y(d[y_variable]) >= selection[0][1] &&
-      //       y(d[y_variable]) <= selection[1][1]
-      //         ? "black"
-      //         : "none"
-      //     )
-      //     .attr("stroke-width", "1");
-      // }
-
-      // Update mousemove handler
-      // g.on("mousemove", (event) => {
-      //   if (!storedSelection) {
-      //     const [mx, my] = d3.pointer(event);
-      //     const i = delaunay.find(mx, my);
-      //     if (i !== -1) {
-      //       const d = coloredData[i];
-      //       tooltip
-      //         .style("opacity", 1)
-      //         .html(
-      //           `${d.county}, ${d.state}<br/>X: ${d[x_variable]}<br/>Y: ${d[y_variable]}`
-      //         )
-      //         .style("left", event.pageX + 10 + "px")
-      //         .style("top", event.pageY - 28 + "px");
-      //       dots.attr("r", (j, index) =>
-      //         index === i ? scaleSizeOfCircles : 3
-      //       );
-      //     } else {
-      //       tooltip.style("opacity", 0);
-      //       //   dots.attr("r", 3);
-      //     }
-      //   }
-      // });
-
-      // g.on("mouseleave", () => {
-      //   tooltip.style("opacity", 0);
-      //   //   dots.attr("r", 3);
-      // });
     }, [data, width, height]);
 
     const voronoiLayout = useMemo(
@@ -332,7 +203,7 @@ export default withTooltip<DotsProps, PointsRange>(
         const point = localPoint(svgRef.current, event);
 
         if (!point) return;
-        const neighborRadius = 100;
+        const neighborRadius = 60;
         const closest = voronoiLayout.find(point.x, point.y, neighborRadius);
         if (closest) {
           showTooltip({
@@ -354,7 +225,11 @@ export default withTooltip<DotsProps, PointsRange>(
     const yMax = height - margin.top - margin.bottom;
     return (
       <>
-        <svg ref={svgRef} width={width} height={height}>
+        <svg
+          ref={svgRef}
+          width={width}
+          style={{ maxHeight: height, height: "100%" }}
+        >
           <rect
             width={width}
             height={height}
@@ -374,6 +249,16 @@ export default withTooltip<DotsProps, PointsRange>(
               stroke="#F3F3F3"
             />
             <line x1={xMax} x2={xMax} y1={0} y2={yMax} stroke="#e0e0e0" />
+            <Line
+              from={{
+                x: x(regressionDatum[0][0]),
+                y: y(regressionDatum[0][1]),
+              }}
+              to={{ x: x(regressionDatum[1][0]), y: y(regressionDatum[1][1]) }}
+              stroke="grey"
+              strokeWidth={3}
+              strokeDasharray="35,15"
+            ></Line>
             <AxisBottom
               top={yMax}
               scale={x}
@@ -382,9 +267,7 @@ export default withTooltip<DotsProps, PointsRange>(
               hideZero
               hideAxisLine
             />
-            <AxisLeft scale={y}  hideTicks
-              hideZero
-              hideAxisLine/>
+            <AxisLeft scale={y} hideTicks hideZero hideAxisLine />
             {coloredData.map((point, i) => (
               <Circle
                 key={`point-${point[0]}-${i}`}
