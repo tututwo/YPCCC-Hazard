@@ -86,7 +86,7 @@ const columns = [
   },
 ];
 // eslint-disable-next-line react/display-name
-export default function DataTableDemo({ data,colorScale }) {
+export default function DataTableDemo({ data, colorScale, height }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [filterValue, setFilterValue] = React.useState("");
   const [columnFilters, setColumnFilters] = React.useState([]);
@@ -123,17 +123,17 @@ export default function DataTableDemo({ data,colorScale }) {
   });
 
   return (
-    <div className="">
+    <>
       <Input
         placeholder="Filter counties..."
         value={(table.getColumn("county")?.getFilterValue() as string) ?? ""}
         onChange={(event) =>
           table.getColumn("county")?.setFilterValue(event.target.value)
         }
-        className="max-w-sm mb-4"
+        className="w-full mb-4 "
       />
 
-      <div ref={parentRef} className="h-screen overflow-auto relative">
+      <div ref={parentRef} className="overflow-scroll relative h-full">
         <Table className="grid">
           <TableHeader className="grid sticky top-0 z-50 bg-white">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -180,8 +180,8 @@ export default function DataTableDemo({ data,colorScale }) {
                   style={{
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
-                  onMouseLeave={() => setHoveredRowIndex(null)}
+                  // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
+                  // onMouseLeave={() => setHoveredRowIndex(null)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
@@ -209,6 +209,6 @@ export default function DataTableDemo({ data,colorScale }) {
           </TableBody>
         </Table>
       </div>
-    </div>
+    </>
   );
 }

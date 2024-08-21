@@ -138,7 +138,7 @@ export default function Home() {
         className="z-50"
       />
       <MapProvider>
-        <main className="flex-grow h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full  relative overflow-hidden">
+        <main className="flex-grow h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full  relative overflow-hidden ">
           <ExpandableSection
             isExpanded={isExpanded}
             isDesktop={isDesktop}
@@ -147,7 +147,7 @@ export default function Home() {
           {/* NOTE: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
 
           <section
-            className="w-full desktop:flex-grow desktop:flex-shrink pl-6 pr-4 flex flex-col"
+            className="w-full desktop:flex-grow desktop:flex-shrink pl-6 pr-4 pb-6 flex flex-col "
             onMouseEnter={handleMouseLeave}
           >
             {isDesktop && (
@@ -161,7 +161,7 @@ export default function Home() {
               </div>
             )}
             <div
-              className="flex-grow max-h-[70vh] flex flex-col desktop:flex-row"
+              className="grow-[2] max-h-[70vh] flex flex-col desktop:flex-row"
               id="map-container"
             >
               <section
@@ -190,7 +190,7 @@ export default function Home() {
               <h2 className="text-lg font-bold ml-8">
                 Heat worry and Heat rating of all counties
               </h2>
-              <figure className="w-full h-full">
+              <figure className="w-full h-full ">
                 <ParentSize>
                   {({ width, height, top, left }) => {
                     return (
@@ -212,7 +212,7 @@ export default function Home() {
           </section>
 
           {isDesktop ? (
-            <aside className="w-full desktop:w-1/3 flex-shrink-0 pr-1 ">
+            <aside className="w-full desktop:w-1/3 flex-shrink-0 pr-1 flex flex-col">
               <Button
                 asChild
                 className="bg-[#E8E8E8] w-full min-h-[4rem] text-xl rounded-none text-slate-950 font-bold"
@@ -222,11 +222,17 @@ export default function Home() {
               <div className="mt-4 mb-1 ">
                 <b className="text-xl">3143 Counties</b> in the US
               </div>
-              <div className="table-container">
-                <DataTableDemo
-                  data={data}
-                  colorScale={colorScale}
-                ></DataTableDemo>
+              <div className="table-container grow overflow-hidden">
+                <ParentSize>
+                  {({ width, height }) => {
+                    return <DataTableDemo
+                      data={data}
+                      colorScale={colorScale}
+                      height={height}
+                    ></DataTableDemo>;
+                  }}
+                </ParentSize>
+                
               </div>
 
               <Button variant={"ghost"} className="w-full flex text-lg">

@@ -278,7 +278,7 @@ export default withTooltip<DotsProps, PointsRange>(
                 fill={point.color}
               />
             ))}
-            {voronoiLayout.polygons().map((polygon, i) => (
+            {/* {voronoiLayout.polygons().map((polygon, i) => (
               <VoronoiPolygon
                 key={`polygon-${i}`}
                 polygon={polygon}
@@ -288,7 +288,7 @@ export default withTooltip<DotsProps, PointsRange>(
                 strokeOpacity={0.2}
                 fillOpacity={tooltipData === polygon.data ? 0.5 : 0}
               />
-            ))}
+            ))} */}
           </Group>
         </svg>
         {tooltipOpen &&
