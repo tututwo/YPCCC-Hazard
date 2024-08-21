@@ -1,69 +1,16 @@
 // @ts-nocheck
-"use client";
-
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import * as d3 from "d3";
-import { geoAlbers, geoMercator, geoOrthographic } from "d3-geo";
 import { Map } from "react-map-gl/maplibre";
-import { feature, mesh } from "topojson-client";
 import { useMapContext } from "@/lib/context";
-
 import DeckGL from "@deck.gl/react";
 import { MapViewState, FlyToInterpolator } from "@deck.gl/core";
-import { LineLayer, GeoJsonLayer } from "@deck.gl/layers";
+import { GeoJsonLayer } from "@deck.gl/layers";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 const CARTO_BASEMAP =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
-
-const projectGeoJson = (geojson, projection) => {
-  const path = d3.geoPath().projection(projection);
-  return {
-    type: "FeatureCollection",
-    features: geojson.features.map((feature) => ({
-      type: "Feature",
-      geometry: {
-        type: "MultiPolygon",
-        coordinates: path(feature).coordinates || [],
-      },
-      properties: feature.properties,
-    })),
-  };
-};
-const calculateBBox = (features) => {
-  let minLng = Infinity;
-  let maxLng = -Infinity;
-  let minLat = Infinity;
-  let maxLat = -Infinity;
-  let validCoordinatesFound = false;
-
-  features.forEach((feature) => {
-    if (feature.geometry && feature.geometry.coordinates) {
-      feature.geometry.coordinates[0].forEach((coord) => {
-        const [lng, lat] = coord;
-        if (isFinite(lng) && isFinite(lat)) {
-          minLng = Math.min(minLng, lng);
-          maxLng = Math.max(maxLng, lng);
-          minLat = Math.min(minLat, lat);
-          maxLat = Math.max(maxLat, lat);
-          validCoordinatesFound = true;
-        }
-      });
-    }
-  });
-
-  return validCoordinatesFound
-    ? [
-        [minLng, minLat],
-        [maxLng, maxLat],
-      ]
-    : null;
-};
 
 const DeckglMap = ({
   width = 975,
@@ -73,36 +20,67 @@ const DeckglMap = ({
   colorScale,
 }) => {
   const { selectedState } = useMapContext();
-  const [initialViewState, setInitialViewState] = useState<MapViewState>({
-    longitude: -98.5795, // Roughly the center of the US
+  const [initialViewState, setInitialViewState] = useState({
+    longitude: -98.5795,
     latitude: 39.8283,
-    zoom: 3, // Adjust this value to fit the entire US in view
+    zoom: 3,
     pitch: 0,
     bearing: 0,
+  });
+  const [alphaValues, setAlphaValues] = useState(() => {
+    const initialAlphas = {};
+    geographyData.features.forEach((feature) => {
+      initialAlphas[feature.properties.STATENAME] = 255;
+    });
+    return initialAlphas;
   });
 
   const mapRef = useRef(null);
 
   useEffect(() => {
+    const newViewState = {
+      minZoom: 3,
+      transitionInterpolator: new FlyToInterpolator({ speed: 2 }),
+      transitionDuration: "auto",
+    };
+
     if (selectedState.name === "US") {
       setInitialViewState({
-        longitude: -98.5795, // Roughly the center of the US
+        longitude: -98.5795,
         latitude: 39.8283,
-        zoom: 3.8, // Adjust this value to fit the entire US in view
+        zoom: 3.8,
         pitch: 0,
         bearing: 0,
-        minZoom: 3,
+        ...newViewState,
       });
     } else {
       setInitialViewState({
         ...zoomToWhichState[selectedState.name],
-        minZoom: 3,
-        transitionInterpolator: new FlyToInterpolator({ speed: 2 }),
-        transitionDuration: "auto",
+        ...newViewState,
       });
     }
-  }, [selectedState]);
+  }, [selectedState, zoomToWhichState]);
 
+  useGSAP(
+    () => {
+      const targetAlphas = {};
+      geographyData.features.forEach((feature) => {
+        targetAlphas[feature.properties.STATENAME] =
+          selectedState.name === "US" ||
+          feature.properties.STATENAME === selectedState.name
+            ? 255
+            : 80;
+      });
+
+      gsap.to(alphaValues, {
+        ...targetAlphas,
+        duration: .88,
+        ease: "power2.inOut",
+        onUpdate: () => setAlphaValues({ ...alphaValues }),
+      });
+    },
+    { dependencies: [selectedState, geographyData] }
+  );
   const layers = useMemo(
     () => [
       new GeoJsonLayer({
@@ -112,23 +90,17 @@ const DeckglMap = ({
           const { r, g, b } = d3.color(
             colorScale(d.properties.gap_cc_heatscore)
           );
-          let a;
-          if (selectedState.name === "US") {
-            a = 255;
-          } else {
-            a = d.properties.STATENAME === selectedState.name ? 255 : 80;
-          }
-
+          const a = alphaValues[d.properties.STATENAME] || 255; // Default to 255 if not set
           return [r, g, b, a];
         },
         getLineColor: [255, 255, 255],
         getLineWidth: 1,
         updateTriggers: {
-          getFillColor: [selectedState, colorScale],
+          getFillColor: [selectedState, colorScale, alphaValues],
         },
       }),
     ],
-    [geographyData, selectedState, colorScale]
+    [geographyData, selectedState, colorScale, alphaValues]
   );
 
   return (
@@ -138,12 +110,7 @@ const DeckglMap = ({
         controller={true}
         layers={layers}
       >
-        <Map
-          reuseMaps
-          mapStyle={
-            "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json"
-          }
-        />
+        <Map reuseMaps mapStyle={CARTO_BASEMAP} />
       </DeckGL>
     </map>
   );

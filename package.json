@@ -37,6 +37,7 @@
     "lucide-react": "^0.424.0",
     "mapbox-gl": "^3.6.0",
     "maplibre-gl": "^4.5.2",
+    "math.gl": "^4.0.1",
     "next": "14.2.5",
     "react": "^18",
     "react-dom": "^18",

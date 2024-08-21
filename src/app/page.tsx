@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 import counties from "../../public/finalGEOJSON.json";
 // NOTE: UI library
 import { Button } from "@/components/ui/button";
@@ -65,11 +65,11 @@ gsap.registerPlugin(useGSAP);
 
 // NOTE: zoom-to-state metrics
 
-const calculateStateViewsFromCounties = dynamic(() => Promise.resolve((
+function calculateStateViewsFromCounties(
   countyGeoJSON: FeatureCollection,
   width = 800, // Default width is 800
   height = 600
-)=>{
+) {
   const zoomToWhichState = {};
   const stateFeatures = {};
 
@@ -136,7 +136,7 @@ const calculateStateViewsFromCounties = dynamic(() => Promise.resolve((
   });
 
   return zoomToWhichState;
-}), { ssr: false });
+}
 const colorScale = d3
   .scaleLinear<string>()
   .domain([-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1])
@@ -251,7 +251,7 @@ export default function Home() {
               <h2 className="text-lg font-bold ml-8">
                 Heat worry and Heat rating of all counties
               </h2>
-              <figure className="w-full h-full max-h-[50vh]">
+              <figure className="w-full h-full max-h-[30vh]">
                 <ParentSize>
                   {({ width, height, top, left }) => {
                     return (
