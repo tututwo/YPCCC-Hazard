@@ -57,7 +57,13 @@ const DeckglMap = ({
   const [hoverInfo, setHoverInfo] = useState<PickingInfo<DataType>>({});
 
   const mapRef = useRef(null);
+  const onHover = useCallback((info) => {
+    setHoverInfo(info.object ? info : null);
+  }, []);
 
+  const onMouseLeave = useCallback(() => {
+    setHoverInfo(null);
+  }, []);
   useEffect(() => {
     const newViewState = {
       minZoom: 3,
@@ -89,7 +95,7 @@ const DeckglMap = ({
         targetAlphas[feature.properties.STATENAME] =
           selectedState.name === "US" ||
           feature.properties.STATENAME === selectedState.name
-            ? 255
+            ? 250
             : 80;
       });
 
@@ -155,7 +161,7 @@ const DeckglMap = ({
         },
         pickable: true,
         autoHighlight: false,
-        onHover: (info) => setHoverInfo(info),
+        // onHover: (info) => setHoverInfo(info),
         lineWidthUnits: "pixels",
         lineWidthScale: 1,
         lineWidthMinPixels: 0.4,
@@ -171,9 +177,9 @@ const DeckglMap = ({
   );
 
   const hoverLayer = useMemo(() => {
-    if (!hoverInfo.object) return null;
+    if (!hoverInfo || !hoverInfo.object) return null;
     return new GeoJsonLayer({
-      id: 'hover-layer',
+      id: "hover-layer",
       data: [hoverInfo.object],
       pickable: false,
       stroked: true,
@@ -185,18 +191,22 @@ const DeckglMap = ({
       getLineColor: [255, 255, 255, 255],
       getLineWidth: 2,
     });
-  }, [hoverInfo.object]);
-
+  }, [hoverInfo]);
 
   return (
-    <map ref={mapRef} style={{ width: "100%", height: "100%" }}>
+    <map
+      ref={mapRef}
+      style={{ width: "100%", height: "100%" }}
+      onMouseLeave={onMouseLeave}
+    >
       <DeckGL
         initialViewState={initialViewState}
         controller={true}
         layers={[...layers, hoverLayer].filter(Boolean)}
+        onHover={onHover}
         // layers={layers}
       >
-        {hoverInfo.object && (
+        {hoverInfo && hoverInfo.object && (
           <div style={{ ...tooltipStyle, left: hoverInfo.x, top: hoverInfo.y }}>
             <h1>
               {hoverInfo.object.properties.STATENAME} :{" "}

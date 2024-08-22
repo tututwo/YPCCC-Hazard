@@ -23,10 +23,22 @@ import { voronoi, VoronoiPolygon } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
+import { Brush } from "@visx/brush";
+import { BrushHandleRenderProps } from "@visx/brush/lib/types";
+import BaseBrush from "@visx/brush/lib/BaseBrush";
 // Add these constants for your color scales
 const redColors = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"];
 const grayColors = ["#374151", "#4b5563", "#6b7280", "#9ca3af", "lightgray"];
 let tooltipTimeout: number;
+
+function raise<T>(items: T[], raiseIndex: number) {
+  const array = [...items];
+  const lastIndex = array.length - 1;
+  const [raiseItem] = array.splice(raiseIndex, 1);
+  array.splice(lastIndex, 0, raiseItem);
+  return array;
+}
+
 function distanceFromPointToLine(pointCoord, linePoint1, linePoint2) {
   // Calculate the numerator of the distance formula
 
@@ -37,15 +49,11 @@ function distanceFromPointToLine(pointCoord, linePoint1, linePoint2) {
   // Return the distance
   return distance;
 }
-function distanceFromLine(x, y, x1, y1, x2, y2) {
-  const numerator = Math.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1);
-  const denominator = Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
-  return numerator / denominator;
-}
+
 const x_variable = "L_cc_heatscore";
 const y_variable = "R_heat_worry";
-const scaleSizeOfCircles = 6;
-const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+
+const margin = { top: 0, right: 0, bottom: 0, left: 0 };
 
 export default withTooltip<DotsProps, PointsRange>(
   ({
@@ -61,6 +69,27 @@ export default withTooltip<DotsProps, PointsRange>(
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
+
+    const [isBrushing, setIsBrushing] = useState(false);
+
+    const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
+    const [currentBrushSelection, setCurrentBrushSelection] = useState<
+      Set<string>
+    >(new Set());
+    const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
+
+    const circleStyles = useMemo(() => {
+      return (point: PointsRange) => {
+        const isBrushed = brushedCircles.has(point.geoid);
+        const isHovered = hoveredPointId === point.geoid;
+        return {
+          r: isBrushed ? 6 : isHovered ? 5 : 3,
+          fill: point.color,
+          stroke: isBrushed ? "black" : isHovered ? "black" : "none",
+          strokeWidth: isBrushed ? 2 : isHovered ? 1 : 0,
+        };
+      };
+    }, [brushedCircles, hoveredPointId]);
     const x = useMemo(
       () =>
         d3
@@ -139,50 +168,17 @@ export default withTooltip<DotsProps, PointsRange>(
         };
       });
     }, [dataWithColorValue, regressionDatum, redScale, grayScale]);
-
-    useEffect(() => {
-      if (!data || data.length === 0) return;
-
-      const svg = d3.select(svgRef.current);
-
-      const g = svg
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-      // const brush = d3
-      //   .brush()
-      //   .extent([
-      //     [0, 0],
-      //     [width, height],
-      //   ])
-      //   .on("start brush end", brushed);
-
-      // const brushGroup = g
-      //   .append("g")
-      //   .attr("class", "brush")
-      //   .call(brush)
-      //   .lower(); // Ensure brush is below other interactive elements
-
-      // let storedSelection = null;
-
-      // // Update brushed function
-      // function brushed(event) {
-      //   const selection = event.selection;
-      //   const isBrushing = event.type === "brush";
-
-      //   brushGroup
-      //     .select(".selection")
-      //     .style("fill", isBrushing ? null : "none");
-
-      //   if (selection) {
-      //     storedSelection = selection;
-      //     updateCircles(selection);
-      //   } else if (event.type === "end" && !selection) {
-      //     updateCircles(null);
-      //     storedSelection = null;
-      //   }
-      // }
-    }, [data, width, height]);
+    // Memoize coloredAndRaisedData
+    const coloredAndRaisedData = useMemo(() => {
+      let result = coloredData;
+      if (hoveredPointId) {
+        const index = result.findIndex((d) => d.geoid === hoveredPointId);
+        if (index !== -1) {
+          result = raise(result, index);
+        }
+      }
+      return result;
+    }, [coloredData, hoveredPointId]);
 
     const voronoiLayout = useMemo(
       () =>
@@ -194,41 +190,93 @@ export default withTooltip<DotsProps, PointsRange>(
         })(data),
       [width, height, x, y]
     );
+
     const handleMouseMove = useCallback(
       (event: React.MouseEvent | React.TouchEvent) => {
-        if (tooltipTimeout) clearTimeout(tooltipTimeout);
         if (!svgRef.current) return;
 
-        // find the nearest polygon to the current mouse position
         const point = localPoint(svgRef.current, event);
 
         if (!point) return;
-        const neighborRadius = 60;
+        const neighborRadius = 100;
         const closest = voronoiLayout.find(point.x, point.y, neighborRadius);
-        if (closest) {
+        if (closest && !isBrushing) {
+          setHoveredPointId(closest.data.geoid);
           showTooltip({
             tooltipLeft: x(closest.data[x_variable]),
             tooltipTop: y(closest.data[y_variable]),
             tooltipData: closest.data,
           });
+        } else {
+          setHoveredPointId(null);
+          hideTooltip();
         }
       },
-      [showTooltip, voronoiLayout, x, y]
+      [
+        showTooltip,
+        hideTooltip,
+        voronoiLayout,
+        x,
+        y,
+        isBrushing,
+        x_variable,
+        y_variable,
+      ]
     );
 
     const handleMouseLeave = useCallback(() => {
       tooltipTimeout = window.setTimeout(() => {
         hideTooltip();
+        // setHoveredPoint({ geoid: null });
       }, 300);
     }, [hideTooltip]);
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
+
+    // NOTE: Brushing
+    const handleMouseDown = useCallback(
+      (event: React.MouseEvent) => {
+        setIsBrushing(true);
+        hideTooltip();
+      },
+      [hideTooltip]
+    );
+
+    const handleMouseUp = useCallback(() => {
+      setIsBrushing(false);
+
+      console.log("Brushed circles after completion:", currentBrushSelection);
+    }, [currentBrushSelection]);
+
+    const handleBrushChange = (domain: Bounds | null) => {
+      if (!domain) return;
+      const { x0, x1, y0, y1 } = domain;
+      const selectedPointsSet = new Set(
+        data
+          .filter(
+            (point) =>
+              point[x_variable] >= x0 &&
+              point[x_variable] <= x1 &&
+              point[y_variable] >= y0 &&
+              point[y_variable] <= y1
+          )
+          .map((point) => point.geoid)
+      );
+
+      setCurrentBrushSelection(selectedPointsSet);
+      setBrushedCircles(currentBrushSelection);
+    };
+
     return (
       <>
         <svg
           ref={svgRef}
           width={width}
-          style={{ maxHeight: height, height: "100%" }}
+          style={{
+            maxHeight: height,
+            height: "100%",
+            cursor: isBrushing ? "crosshair" : "default",
+          }}
         >
           <rect
             width={width}
@@ -239,8 +287,10 @@ export default withTooltip<DotsProps, PointsRange>(
             onMouseLeave={handleMouseLeave}
             onTouchMove={handleMouseMove}
             onTouchEnd={handleMouseLeave}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
           />
-          <Group pointerEvents="none" left={margin.left} top={margin.top}>
+          <Group left={margin.left} top={margin.top}>
             <GridRows scale={y} width={xMax} height={yMax} stroke="#F3F3F3" />
             <GridColumns
               scale={x}
@@ -268,16 +318,24 @@ export default withTooltip<DotsProps, PointsRange>(
               hideAxisLine
             />
             <AxisLeft scale={y} hideTicks hideZero hideAxisLine />
-            {coloredData.map((point, i) => (
-              <Circle
-                key={`point-${point[0]}-${i}`}
-                className="dot"
-                cx={x(point[x_variable])}
-                cy={y(point[y_variable])}
-                r={i % 3 === 0 ? 2 : 3}
-                fill={point.color}
-              />
-            ))}
+            {coloredAndRaisedData.map((point, i) => {
+              const styles = circleStyles(point);
+              return (
+                <Circle
+                  key={`point-${point.geoid}`}
+                  className="dot"
+                  cx={x(point[x_variable])}
+                  cy={y(point[y_variable])}
+                  r={styles.r}
+                  fill={styles.fill}
+                  stroke={styles.stroke}
+                  strokeWidth={styles.strokeWidth}
+                  style={{
+                    transition: "all 0.3s ease-in-out",
+                  }}
+                />
+              );
+            })}
             {/* {voronoiLayout.polygons().map((polygon, i) => (
               <VoronoiPolygon
                 key={`polygon-${i}`}
@@ -289,13 +347,34 @@ export default withTooltip<DotsProps, PointsRange>(
                 fillOpacity={tooltipData === polygon.data ? 0.5 : 0}
               />
             ))} */}
+            {isBrushing && (
+              <Brush
+                xScale={x}
+                yScale={y}
+                width={xMax}
+                height={yMax}
+                handleSize={8}
+                resizeTriggerAreas={[
+                  "left",
+                  "right",
+                  "top",
+                  "bottom",
+                  "center",
+                ]}
+                brushDirection="both"
+                initialBrushPosition={null}
+                onChange={handleBrushChange}
+                onBrushEnd={handleMouseUp}
+                useWindowMoveEvents
+              />
+            )}
           </Group>
         </svg>
         {tooltipOpen &&
           tooltipData &&
           tooltipLeft != null &&
           tooltipTop != null && (
-            <Tooltip left={tooltipLeft + 10} top={tooltipTop + 10}>
+            <Tooltip left={tooltipLeft + 10} top={tooltipTop - 50}>
               <div>
                 <strong>Rating:</strong> {tooltipData[x_variable]}
               </div>
