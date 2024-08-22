@@ -249,7 +249,7 @@ export default withTooltip<DotsProps, PointsRange>(
               stroke="#F3F3F3"
             />
             <line x1={xMax} x2={xMax} y1={0} y2={yMax} stroke="#e0e0e0" />
-            <Line
+            {/* <Line
               from={{
                 x: x(regressionDatum[0][0]),
                 y: y(regressionDatum[0][1]),
@@ -258,7 +258,7 @@ export default withTooltip<DotsProps, PointsRange>(
               stroke="grey"
               strokeWidth={3}
               strokeDasharray="35,15"
-            ></Line>
+            ></Line> */}
             <AxisBottom
               top={yMax}
               scale={x}

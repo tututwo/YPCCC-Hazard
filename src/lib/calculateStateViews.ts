@@ -65,7 +65,7 @@ export default function calculateStateViewsFromCounties(
         zoomToWhichState[stateName] = {
           longitude: centerLng,
           latitude: centerLat,
-          zoom: Math.floor(viewport.zoom),
+          zoom: Math.ceil(viewport.zoom)*.881,
         };
       }
     });
