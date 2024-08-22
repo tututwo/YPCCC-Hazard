@@ -71,6 +71,6 @@
   display: none;
 }
 
-.maplibregl-map:last-child {
+/* .maplibregl-map:last-child {
   display: none;  
-}
+} */

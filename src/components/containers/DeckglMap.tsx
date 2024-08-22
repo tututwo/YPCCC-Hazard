@@ -10,7 +10,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
 const CARTO_BASEMAP =
-  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+  "https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json";
 
 const DeckglMap = ({
   width = 975,

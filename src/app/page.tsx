@@ -166,7 +166,7 @@ export default function Home() {
             >
               <section
                 ref={parentRef}
-                className="flex-grow h-full md:order-2 relative z-10"
+                className="flex-grow h-full md:order-2 relative z-10 overflow-hidden"
               >
                 <DeckglMap
                   width={width}
@@ -225,14 +225,15 @@ export default function Home() {
               <div className="table-container grow overflow-hidden">
                 <ParentSize>
                   {({ width, height }) => {
-                    return <DataTableDemo
-                      data={data}
-                      colorScale={colorScale}
-                      height={height}
-                    ></DataTableDemo>;
+                    return (
+                      <DataTableDemo
+                        data={data}
+                        colorScale={colorScale}
+                        height={height}
+                      ></DataTableDemo>
+                    );
                   }}
                 </ParentSize>
-                
               </div>
 
               <Button variant={"ghost"} className="w-full flex text-lg">
