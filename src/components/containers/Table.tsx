@@ -24,13 +24,15 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
+import { Checkbox } from "@/components/ui/checkbox";
 import TableTailwind from "./TableTailwindCSS";
 
 import * as d3 from "d3";
 
 const formatDecimal = d3.format(".1f");
-
+const xVariable = "L_cc_heatscore";
+const yVariable = "R_heat_worry";
+const colorVariable = "gap_cc_heatscore";
 const createSortableHeader =
   (label: string) =>
   ({ column }) =>
@@ -69,27 +71,29 @@ const columns = [
     size: 150,
   },
   {
-    accessorKey: "gap_cc_heatscore",
+    accessorKey: colorVariable,
     header: createSortableHeader("Gap"),
     cell: ({ getValue }) => formatDecimal(getValue()),
     size: 50,
   },
   {
-    accessorKey: "L_cc_heatscore",
+    accessorKey: xVariable,
     header: createSortableHeader("Risk"),
     cell: ({ getValue }) => formatDecimal(getValue()),
   },
   {
-    accessorKey: "R_heat_worry",
+    accessorKey: yVariable,
     header: createSortableHeader("Worry"),
     cell: ({ getValue }) => formatDecimal(getValue()),
   },
 ];
 // eslint-disable-next-line react/display-name
-export default function DataTableDemo({ data, colorScale, height }) {
+export default function DataTableDemo({ data, colorScale, height, xVariable, yVariable, colorVariable }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [filterValue, setFilterValue] = React.useState("");
   const [columnFilters, setColumnFilters] = React.useState([]);
+  const [rowSelection, setRowSelection] = React.useState({});
+
   const table = useReactTable({
     data,
     columns,
@@ -100,16 +104,28 @@ export default function DataTableDemo({ data, colorScale, height }) {
     globalFilterFn: "includesString", // Use the built-in filter function
     state: {
       sorting,
+      rowSelection,
       globalFilter: filterValue, // Use globalFilter instead of columnFilters
     },
     onGlobalFilterChange: setFilterValue,
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
   });
   const [hoveredRowIndex, setHoveredRowIndex] = React.useState<number | null>(
     null
   );
+  const selectedRows = React.useMemo(
+    () => table.getFilteredSelectedRowModel().rows,
+    [table, rowSelection]
+  );
 
+  const unselectedRows = React.useMemo(
+    () =>
+      table.getFilteredRowModel().rows.filter((row) => !rowSelection[row.id]),
+    [table, rowSelection]
+  );
   const { rows } = table.getRowModel();
-
+console.log(table.getSelectedRowModel().rows)
   const parentRef = React.useRef<HTMLDivElement>(null);
   const tableRef = React.useRef<HTMLTableElement>(null);
 
@@ -168,8 +184,41 @@ export default function DataTableDemo({ data, colorScale, height }) {
             className="grid relative"
             style={{ height: virtualizer.getTotalSize() + "px" }}
           >
+             {selectedRows.map((row) => (
+              <TableRow
+                key={row.id}
+                className="flex w-full z-30 transition-colors duration-200 hover:bg-gray-100 cursor-pointer bg-blue-50"
+              >
+                <TableCell className="flex items-center">
+                  <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                  />
+                </TableCell>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className="flex py-1 pl-0 truncate z-10"
+                    style={{
+                      width: cell.column.getSize() + "px",
+                      backgroundColor:
+                        cell.column.id === color
+                          ? colorScale(cell.getValue())
+                          : "transparent",
+                    }}
+                  >
+                    <div className="truncate">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </div>
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
             {virtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rows[virtualRow.index];
+              const row = unselectedRows[virtualRow.index];
               if (!row) return null;
               return (
                 <TableRow
@@ -183,6 +232,12 @@ export default function DataTableDemo({ data, colorScale, height }) {
                   // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
                   // onMouseLeave={() => setHoveredRowIndex(null)}
                 >
+                    <TableCell className="flex items-center">
+                    <Checkbox
+                      checked={row.getIsSelected()}
+                      onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    />
+                  </TableCell>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -190,7 +245,7 @@ export default function DataTableDemo({ data, colorScale, height }) {
                       style={{
                         width: cell.column.getSize() + "px",
                         backgroundColor:
-                          cell.column.id === "gap_cc_heatscore"
+                          cell.column.id === color
                             ? colorScale(cell.getValue())
                             : "transparent",
                       }}

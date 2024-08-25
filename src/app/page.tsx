@@ -52,6 +52,10 @@ import ExpandButton from "@/components/ui/expandButton";
 // NOTE: Styles
 import "../styles/InputButton.css";
 
+  const xVariable = "xValue";
+  const yVariable = "yValue";
+  const colorVariable = "gap";
+
 const categories = [
   {
     name: "Heat",
@@ -113,11 +117,11 @@ export default function Home() {
   }, []);
   useEffect(() => {
     csv(
-      "https://raw.githubusercontent.com/tututwo/YPCCC-Hazard-Tool/main/public/data.csv"
+      "/data.csv"
     ).then((loadedData) => {
       loadedData.forEach((d) => {
-        d.L_cc_heatscore = +d.L_cc_heatscore;
-        d.R_heat_worry = +d.R_heat_worry;
+        d[xVariable] = +d[xVariable];
+        d[yVariable] = +d[yVariable];
       });
       setData(loadedData);
     });
@@ -174,6 +178,7 @@ export default function Home() {
                   zoomToWhichState={zoomToWhichState}
                   geographyData={counties}
                   colorScale={colorScale}
+                  colorVariable={colorVariable}
                 />
               </section>
 
@@ -198,6 +203,9 @@ export default function Home() {
                         data={data}
                         width={width}
                         height={height}
+                        xVariable={xVariable}
+                        yVariable={yVariable}
+                        colorVariable={colorVariable}
                       ></Scatterplot>
                     );
                   }}
@@ -223,17 +231,20 @@ export default function Home() {
                 <b className="text-xl">3143 Counties</b> in the US
               </div>
               <div className="table-container grow overflow-hidden">
-                <ParentSize>
+                {/* <ParentSize>
                   {({ width, height }) => {
                     return (
                       <DataTableDemo
                         data={data}
                         colorScale={colorScale}
                         height={height}
+                        xVariable={xVariable}
+                        yVariable={yVariable}
+                        colorVariable={colorVariable}
                       ></DataTableDemo>
                     );
                   }}
-                </ParentSize>
+                </ParentSize> */}
               </div>
 
               <Button variant={"ghost"} className="w-full flex text-lg">

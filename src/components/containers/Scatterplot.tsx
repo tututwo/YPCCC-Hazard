@@ -50,14 +50,14 @@ function distanceFromPointToLine(pointCoord, linePoint1, linePoint2) {
   return distance;
 }
 
-const x_variable = "L_cc_heatscore";
-const y_variable = "R_heat_worry";
-
 const margin = { top: 0, right: 0, bottom: 0, left: 0 };
 
 export default withTooltip<DotsProps, PointsRange>(
   ({
     data,
+    xVariable,
+    yVariable,
+    colorVariable,
     width,
     height,
     showControls = true,
@@ -69,7 +69,8 @@ export default withTooltip<DotsProps, PointsRange>(
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
-
+    const xMax = width - margin.left - margin.right;
+    const yMax = height - margin.top - margin.bottom;
     const [isBrushing, setIsBrushing] = useState(false);
 
     const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
@@ -94,7 +95,7 @@ export default withTooltip<DotsProps, PointsRange>(
       () =>
         d3
           .scaleLinear()
-          .domain(d3.extent(data, (d) => d[x_variable]) as [number, number])
+          .domain(d3.extent(data, (d) => d[xVariable]) as [number, number])
           .range([0, width - margin.left - margin.right])
           .nice(),
       [data, width]
@@ -104,7 +105,7 @@ export default withTooltip<DotsProps, PointsRange>(
       () =>
         d3
           .scaleLinear()
-          .domain(d3.extent(data, (d) => d[y_variable]) as [number, number])
+          .domain(d3.extent(data, (d) => d[yVariable]) as [number, number])
           .range([height - margin.top - margin.bottom, 0])
           .nice(),
       [data, height]
@@ -113,22 +114,24 @@ export default withTooltip<DotsProps, PointsRange>(
     const regressionDatum = useMemo(
       () =>
         regressionLinear()
-          .x((d) => d[x_variable])
-          .y((d) => d[y_variable])
+          .x((d) => d[xVariable])
+          .y((d) => d[yVariable])
           .domain([20, 100])(data),
       [data]
     );
 
     // Memoize color value calculations
     const dataWithColorValue = useMemo(() => {
-      return data.map((d) => ({
-        ...d,
-        colorValue: distanceFromPointToLine(
-          [x(d[x_variable]), y(d[y_variable])],
-          regressionDatum[0].map(x),
-          regressionDatum[1].map(y)
-        ),
-      }));
+      return data.map((d) => {
+        return {
+          ...d,
+          colorValue: distanceFromPointToLine(
+            [x(d[xVariable]), y(d[yVariable])],
+            regressionDatum[0].map(x),
+            regressionDatum[1].map(y)
+          ),
+        };
+      });
     }, [data, x, y, regressionDatum]);
 
     // Memoize max distance calculation
@@ -161,7 +164,7 @@ export default withTooltip<DotsProps, PointsRange>(
     // Memoize colored data
     const coloredData = useMemo(() => {
       return dataWithColorValue.map((d) => {
-        const isAbove = regressionDatum.predict(d[x_variable]) > d[y_variable];
+        const isAbove = regressionDatum.predict(d[xVariable]) > d[yVariable];
         return {
           ...d,
           color: isAbove ? redScale(d.colorValue) : grayScale(d.colorValue),
@@ -183,8 +186,8 @@ export default withTooltip<DotsProps, PointsRange>(
     const voronoiLayout = useMemo(
       () =>
         voronoi<PointsRange>({
-          x: (d) => x(d[x_variable]) ?? 0,
-          y: (d) => y(d[y_variable]) ?? 0,
+          x: (d) => x(d[xVariable]) ?? 0,
+          y: (d) => y(d[yVariable]) ?? 0,
           width,
           height,
         })(data),
@@ -203,8 +206,8 @@ export default withTooltip<DotsProps, PointsRange>(
         if (closest && !isBrushing) {
           setHoveredPointId(closest.data.geoid);
           showTooltip({
-            tooltipLeft: x(closest.data[x_variable]),
-            tooltipTop: y(closest.data[y_variable]),
+            tooltipLeft: x(closest.data[xVariable]),
+            tooltipTop: y(closest.data[yVariable]),
             tooltipData: closest.data,
           });
         } else {
@@ -219,8 +222,8 @@ export default withTooltip<DotsProps, PointsRange>(
         x,
         y,
         isBrushing,
-        x_variable,
-        y_variable,
+        xVariable,
+        yVariable,
       ]
     );
 
@@ -230,8 +233,6 @@ export default withTooltip<DotsProps, PointsRange>(
         // setHoveredPoint({ geoid: null });
       }, 300);
     }, [hideTooltip]);
-    const xMax = width - margin.left - margin.right;
-    const yMax = height - margin.top - margin.bottom;
 
     // NOTE: Brushing
     const handleMouseDown = useCallback(
@@ -255,10 +256,10 @@ export default withTooltip<DotsProps, PointsRange>(
         data
           .filter(
             (point) =>
-              point[x_variable] >= x0 &&
-              point[x_variable] <= x1 &&
-              point[y_variable] >= y0 &&
-              point[y_variable] <= y1
+              point[xVariable] >= x0 &&
+              point[xVariable] <= x1 &&
+              point[yVariable] >= y0 &&
+              point[yVariable] <= y1
           )
           .map((point) => point.geoid)
       );
@@ -324,8 +325,8 @@ export default withTooltip<DotsProps, PointsRange>(
                 <Circle
                   key={`point-${point.geoid}`}
                   className="dot"
-                  cx={x(point[x_variable])}
-                  cy={y(point[y_variable])}
+                  cx={x(point[xVariable])}
+                  cy={y(point[yVariable])}
                   r={styles.r}
                   fill={styles.fill}
                   stroke={styles.stroke}
@@ -376,10 +377,10 @@ export default withTooltip<DotsProps, PointsRange>(
           tooltipTop != null && (
             <Tooltip left={tooltipLeft + 10} top={tooltipTop - 50}>
               <div>
-                <strong>Rating:</strong> {tooltipData[x_variable]}
+                <strong>Rating:</strong> {tooltipData[xVariable]}
               </div>
               <div>
-                <strong>Worry</strong> {tooltipData[y_variable]}
+                <strong>Worry</strong> {tooltipData[yVariable]}
               </div>
             </Tooltip>
           )}

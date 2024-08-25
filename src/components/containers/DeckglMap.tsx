@@ -14,9 +14,12 @@ import { MapViewState, FlyToInterpolator } from "@deck.gl/core";
 import { GeoJsonLayer } from "@deck.gl/layers";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+
+import stateData from "../../../public/us-states.json";
+
 // https://deck.gl/docs/api-reference/carto/basemap
 const CARTO_BASEMAP =
-  "	https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json";
+  "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 type DataType = {
   position: [longitude: number, latitude: number];
   message: string;
@@ -37,6 +40,7 @@ const DeckglMap = ({
   zoomToWhichState,
   geographyData,
   colorScale,
+  colorVariable,
 }) => {
   const { selectedState } = useMapContext();
 
@@ -116,7 +120,7 @@ const DeckglMap = ({
   //       data: geographyData,
   //       getFillColor: (d) => {
   //         const { r, g, b } = d3.color(
-  //           colorScale(d.properties.gap_cc_heatscore)
+  //           colorScale(d.properties[colorVariable])
   //         );
   //         const a = alphaValues[d.properties.STATENAME] || 255;
   //         return [r, g, b, a];
@@ -148,33 +152,48 @@ const DeckglMap = ({
   //   [geographyData, selectedState, colorScale, alphaValues, hoverInfo]
   // );
   const layers = useMemo(
-    () => [
-      new GeoJsonLayer({
-        id: "geojson-layer",
-        data: geographyData,
-        getFillColor: (d) => {
-          const { r, g, b } = d3.color(
-            colorScale(d.properties.gap_cc_heatscore)
-          );
-          const a = alphaValues[d.properties.STATENAME] || 255;
-          return [r, g, b, a];
-        },
-        pickable: true,
-        autoHighlight: false,
-        // onHover: (info) => setHoverInfo(info),
-        lineWidthUnits: "pixels",
-        lineWidthScale: 1,
-        lineWidthMinPixels: 0.4,
-        lineWidthMaxPixels: 10,
-        getLineColor: [205, 209, 209, 100], // Default color
-        getLineWidth: 0.5, // Default width
-        updateTriggers: {
-          getFillColor: [selectedState, colorScale, alphaValues],
-        },
-      }),
-    ],
+    () =>
+      [
+        new GeoJsonLayer({
+          id: "geojson-layer",
+          data: geographyData,
+          getFillColor: (d) => {
+            const { r, g, b } = d3.color(
+              colorScale(d.properties[colorVariable])
+            );
+            const a = alphaValues[d.properties.STATENAME] * 0.77 || 255;
+            return [r, g, b, a];
+          },
+          pickable: true,
+          autoHighlight: false,
+          // onHover: (info) => setHoverInfo(info),
+          lineWidthUnits: "pixels",
+          lineWidthScale: 1,
+          lineWidthMinPixels: 0.4,
+          lineWidthMaxPixels: 10,
+          getLineColor: [205, 209, 209, 100], // Default color
+          getLineWidth: 0.5, // Default width
+          updateTriggers: {
+            getFillColor: [selectedState, colorScale, alphaValues],
+          },
+        }),
+        selectedState.name === "US" &&
+          new GeoJsonLayer({
+            id: "state-border-layer",
+            data: stateData,
+            filled: false,
+            stroked: true,
+            getLineColor: [255, 255, 255, 200],
+            getLineWidth: 2,
+            lineWidthUnits: "pixels",
+            lineWidthScale: 1,
+            lineWidthMinPixels: 1,
+            lineWidthMaxPixels: 2,
+          }),
+      ].filter(Boolean),
     [geographyData, selectedState, colorScale, alphaValues]
   );
+
 
   const hoverLayer = useMemo(() => {
     if (!hoverInfo || !hoverInfo.object) return null;
@@ -212,7 +231,7 @@ const DeckglMap = ({
               {hoverInfo.object.properties.STATENAME} :{" "}
               {hoverInfo.object.properties.NAME}
             </h1>
-            <p>{hoverInfo.object.properties.gap_cc_heatscore}</p>
+            <p>{hoverInfo.object.properties[colorVariable]}</p>
           </div>
         )}
         <Map reuseMaps mapStyle={CARTO_BASEMAP} />
