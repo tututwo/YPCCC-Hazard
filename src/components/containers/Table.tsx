@@ -108,7 +108,7 @@ export default function DataTableDemo({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [filterValue, setFilterValue] = useState("");
 
-  const [rowPinning, setRowPinning] = useState<RowPinningState>({});
+  const [rowPinning, setRowPinning] = useState({});
 
   const { colorScale, selectedCounties, updateSelectedCounties } =
     useMapContext();
@@ -123,25 +123,35 @@ export default function DataTableDemo({
     globalFilterFn: "includesString", // Use the built-in filter function
     state: {
       sorting,
-      rowPinning: { top: selectedCounties },
+      rowPinning,
       globalFilter: filterValue, // Use globalFilter instead of columnFilters
     },
     onGlobalFilterChange: setFilterValue,
-    onRowPinningChange: (updater) => {
-      const newPinning =
-        typeof updater === "function"
-          ? updater({ top: selectedCounties })
-          : updater;
-      console.log(newPinning);
-      updateSelectedCounties(newPinning.top);
-    },
+    onRowPinningChange: setRowPinning,
     enableRowPinning: true,
     keepPinnedRows: false,
   });
-  const combinedPinnedRows = useMemo(() => {
-    const tablePinnedRows = table.getTopRows().map((row) => row.id);
-    return [...new Set([...selectedCounties, ...tablePinnedRows])];
-  }, [selectedCounties, table.getTopRows()]);
+
+  // const combinedPinnedRows = useMemo(() => {
+  //   console.log(rowPinning);
+  //   const tablePinnedRows = table.getTopRows().map((row) => row.id);
+  // const selectedCountyRows = table
+  //   .getCenterRows()
+  //   .filter((row) => selectedCounties.includes(row.original.geoid));
+  //   return [...new Set([...selectedCountyRows, ...tablePinnedRows])];
+  // }, [selectedCounties, table.getTopRows()]);
+
+  useEffect(() => {
+    const newPinning: RowPinningState = {
+      top: table
+        .getCenterRows()
+        .filter((row) => selectedCounties.includes(row.original.geoid))
+        .map((row) => row.id),
+    };
+
+    setRowPinning(newPinning);
+  }, [selectedCounties, table]);
+
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   const { rows } = table.getRowModel();
@@ -159,7 +169,7 @@ export default function DataTableDemo({
     scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
 
-  console.log(selectedCounties);
+
   return (
     <>
       <Input
@@ -216,12 +226,12 @@ export default function DataTableDemo({
               <TableRow
                 data-index={rowIndex}
                 onClick={() => {
-                  const isCurrentlyPinned = selectedCounties.includes(row.id);
+                  // const isCurrentlyPinned = selectedCounties.includes(row.id);
 
-                  const newSelectedCounties = isCurrentlyPinned
-                    ? selectedCounties.filter((id) => id !== row.id)
-                    : [...selectedCounties, row.original];
-                  updateSelectedCounties(newSelectedCounties);
+                  // const newSelectedCounties = isCurrentlyPinned
+                  //   ? selectedCounties.filter((id) => id !== row.id)
+                  //   : [...selectedCounties, row.original];
+                  // updateSelectedCounties(newSelectedCounties[0].geoid);
                   row.pin("top");
                 }}
                 key={row.id}
@@ -303,8 +313,8 @@ export default function DataTableDemo({
                     const newSelectedCounties = isCurrentlyPinned
                       ? selectedCounties.filter((id) => id !== row.id)
                       : [...selectedCounties, row.original];
-                    console.log(newSelectedCounties);
-                    updateSelectedCounties(newSelectedCounties);
+                    console.log(newSelectedCounties[0].geoid);
+                    // updateSelectedCounties(newSelectedCounties[0].geoid);
                     row.pin("top");
                   }}
                   // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}

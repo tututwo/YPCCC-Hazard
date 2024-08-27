@@ -58,5 +58,5 @@ type BrushScaleOutput = number | NumberLike | undefined;
 
 /** A catch-all type for scales that are compatible with axis */
 export type Scale<Output extends BrushScaleOutput = BrushScaleOutput> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
   D3Scale<Output, any, any>;

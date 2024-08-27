@@ -158,11 +158,11 @@ export default function Home() {
             {/*NOTE: Legend */}
             {isDesktop && (
               <div className="legend mb-4 desktop:w-[144px]">
-                {/* <ParentSize>
+                <ParentSize>
                   {({ width, height }) => (
                     <Legend width={width} height={height} />
                   )}
-                </ParentSize> */}
+                </ParentSize>
               </div>
             )}
           </section>
@@ -198,7 +198,7 @@ export default function Home() {
                 <b className="text-xl">3143 Counties</b> in the US
               </div>
               <div className="table-container grow overflow-hidden">
-                {/* <ParentSize>
+                <ParentSize>
                   {({ width, height }) => {
                     return (
                       <DataTableDemo
@@ -210,7 +210,7 @@ export default function Home() {
                       ></DataTableDemo>
                     );
                   }}
-                </ParentSize> */}
+                </ParentSize>
               </div>
 
               <Button variant={"ghost"} className="w-full flex text-lg">
