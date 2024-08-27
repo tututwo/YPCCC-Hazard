@@ -38,13 +38,14 @@ export default function ExpandableSection({
         className={`
             overflow-hidden
             absolute
-            top-11
+          
          order-1 flex-grow-0 flex-shrink-0
        border-gray-200
+       text-white
      z-[111] 
-        w-60 h-auto min-h-[calc(100vh-200px)] transition-all duration-[800] ease-in-out
+        w-60 h-full transition-all duration-[800] ease-in-out
         space-y-4
-         p-1 flex flex-col
+         px-4 flex flex-col
         ${
           isExpanded
             ? "translate-x-0 opacity-100"
@@ -87,7 +88,7 @@ export default function ExpandableSection({
                       onClick={() => toggleCategory(category.name)}
                       className={`${
                         i === 0 ? "border-t-0" : "border-t-[1px]"
-                      }  border-[#1c1c1c33] w-full py-1 px-2 text-left font-thin flex justify-between items-center text-sm`}
+                      }  border-[#3C5A77] w-full py-1 px-2 text-left font-thin flex justify-between items-center text-sm`}
                     >
                       <h3>{category.name}</h3>
                       <svg
@@ -115,7 +116,7 @@ export default function ExpandableSection({
                     >
                       <ul ref={listRef} className="relative py-1">
                         <li
-                          className="absolute left-0 w-full bg-[#B5B5B5] transition-transform duration-300 ease-in-out"
+                          className="absolute left-0 w-full bg-[#415F7B] transition-transform duration-300 ease-in-out"
                           style={{
                             transform: `translateY(calc(${selectedIndex} * 40px + 0px))`,
                             height: "40px",
@@ -131,7 +132,7 @@ export default function ExpandableSection({
                               className={`w-full text-left text-xs p-2 whitespace-pre hover:cursor-pointer relative z-10 ${
                                 selectedSubcategory === subcategory
                                   ? "text-white"
-                                  : "hover:bg-gray-100"
+                                  : "hover:bg-[#415f7b55]"
                               }`}
                             >
                               {"    " + subcategory}

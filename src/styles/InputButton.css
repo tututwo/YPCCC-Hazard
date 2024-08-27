@@ -137,10 +137,9 @@
   display: block;
   position: absolute;
   inset: 0px;
-  border-top-right-radius: 8px;
-  border-bottom-right-radius: 8px;
+
   z-index: -1;
-  background: white;
+  background: #12375A;
   box-shadow: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px,
     rgba(15, 15, 15, 0.1) 0px 3px 6px, rgba(15, 15, 15, 0.2) 0px 9px 24px;
 }
@@ -173,7 +172,7 @@
     font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
     -webkit-font-smoothing: auto;
     cursor: default;
-    color: rgb(95, 94, 91);
+    color: white;
     font-weight: 500;
     pointer-events: auto;
     visibility: visible;

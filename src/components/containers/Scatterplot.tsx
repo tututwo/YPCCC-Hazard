@@ -13,8 +13,9 @@ import { scaleThreshold } from "d3-scale";
 import { regressionLinear } from "d3-regression";
 import { pointToLineDistance } from "@turf/point-to-line-distance";
 import { lineString, point } from "@turf/helpers";
-
+import { useMapContext } from "@/lib/context";
 // NOTE: VISX
+import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
 import { Circle, Line } from "@visx/shape";
 import { withTooltip, Tooltip } from "@visx/tooltip";
@@ -23,12 +24,13 @@ import { voronoi, VoronoiPolygon } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
-import { Brush } from "@visx/brush";
+import Brush from "./brush-components/Brush";
 import { BrushHandleRenderProps } from "@visx/brush/lib/types";
 import BaseBrush from "@visx/brush/lib/BaseBrush";
+
 // Add these constants for your color scales
 const redColors = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"];
-const grayColors = ["#374151", "#4b5563", "#6b7280", "#9ca3af", "lightgray"];
+const grayColors = ["#12375A", "#4E6C8A", "#7590AB", "#A7BDD3", "#D2E4F6"];
 let tooltipTimeout: number;
 
 function raise<T>(items: T[], raiseIndex: number) {
@@ -39,18 +41,8 @@ function raise<T>(items: T[], raiseIndex: number) {
   return array;
 }
 
-function distanceFromPointToLine(pointCoord, linePoint1, linePoint2) {
-  // Calculate the numerator of the distance formula
-
-  const pt = point(pointCoord);
-  const line = lineString([linePoint1, linePoint2]);
-
-  const distance = pointToLineDistance(pt, line, { units: "miles" });
-  // Return the distance
-  return distance;
-}
-
-const margin = { top: 0, right: 0, bottom: 0, left: 0 };
+const maxDistance = 1;
+const margin = { top: 0, right: 60, bottom: 50, left: 50 };
 
 export default withTooltip<DotsProps, PointsRange>(
   ({
@@ -69,6 +61,8 @@ export default withTooltip<DotsProps, PointsRange>(
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
     const xMax = width - margin.left - margin.right;
     const yMax = height - margin.top - margin.bottom;
     const [isBrushing, setIsBrushing] = useState(false);
@@ -79,98 +73,57 @@ export default withTooltip<DotsProps, PointsRange>(
     >(new Set());
     const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
 
+    const {
+      selectedState,
+      setSelectedState,
+      colorScale,
+      selectedCounties,
+      updateSelectedCounties,
+    } = useMapContext();
+
     const circleStyles = useMemo(() => {
       return (point: PointsRange) => {
-        const isBrushed = brushedCircles.has(point.geoid);
+        const isBrushed = selectedState.id === 0 && brushedCircles.has(point.geoid);
+        const isSelected = selectedCounties.includes(point.geoid);
         const isHovered = hoveredPointId === point.geoid;
         return {
-          r: isBrushed ? 6 : isHovered ? 5 : 3,
+          r: isSelected ? 6 : isHovered ? 5 : 3,
           fill: point.color,
-          stroke: isBrushed ? "black" : isHovered ? "black" : "none",
-          strokeWidth: isBrushed ? 2 : isHovered ? 1 : 0,
+          stroke: isSelected ? "black" : isHovered ? "black" : "none",
+          strokeWidth: isSelected ? 2 : isHovered ? 1 : 0,
+          opacity: isBrushed || isSelected ? 1 : 0.5,
+          transition: 'all 0.3s ease-in-out',
         };
       };
-    }, [brushedCircles, hoveredPointId]);
+    }, [brushedCircles, hoveredPointId, selectedCounties, selectedState]);
+
+    // NOTE: Scales
     const x = useMemo(
       () =>
-        d3
-          .scaleLinear()
-          .domain(d3.extent(data, (d) => d[xVariable]) as [number, number])
-          .range([0, width - margin.left - margin.right])
-          .nice(),
+        scaleLinear<number>({
+          domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
+          range: [margin.left, width - margin.right],
+          clamp: false,
+        }),
       [data, width]
     );
-
     const y = useMemo(
       () =>
-        d3
-          .scaleLinear()
-          .domain(d3.extent(data, (d) => d[yVariable]) as [number, number])
-          .range([height - margin.top - margin.bottom, 0])
-          .nice(),
+        scaleLinear<number>({
+          domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
+          range: [height - margin.bottom, margin.top],
+          clamp: false,
+        }),
       [data, height]
     );
-    // Memoize the regression calculation
-    const regressionDatum = useMemo(
-      () =>
-        regressionLinear()
-          .x((d) => d[xVariable])
-          .y((d) => d[yVariable])
-          .domain([20, 100])(data),
-      [data]
-    );
 
-    // Memoize color value calculations
-    const dataWithColorValue = useMemo(() => {
-      return data.map((d) => {
-        return {
-          ...d,
-          colorValue: distanceFromPointToLine(
-            [x(d[xVariable]), y(d[yVariable])],
-            regressionDatum[0].map(x),
-            regressionDatum[1].map(y)
-          ),
-        };
-      });
-    }, [data, x, y, regressionDatum]);
-
-    // Memoize max distance calculation
-    const maxDistance = useMemo(() => {
-      return d3.extent(dataWithColorValue, (d) => d.colorValue)[1];
-    }, [dataWithColorValue]);
-
-    // Memoize gray scale
-    const grayScale = useMemo(() => {
-      return scaleThreshold()
-        .domain(
-          d3
-            .range(1, grayColors.length)
-            .map((i) => (i / grayColors.length) * maxDistance)
-        )
-        .range(grayColors.reverse());
-    }, [maxDistance]);
-
-    // Memoize red scale
-    const redScale = useMemo(() => {
-      return scaleThreshold()
-        .domain(
-          d3
-            .range(1, redColors.length)
-            .map((i) => (i / redColors.length) * maxDistance)
-        )
-        .range(redColors.reverse());
-    }, [maxDistance]);
-
-    // Memoize colored data
+    // Use the colorScale in your coloredData calculation
     const coloredData = useMemo(() => {
-      return dataWithColorValue.map((d) => {
-        const isAbove = regressionDatum.predict(d[xVariable]) > d[yVariable];
-        return {
-          ...d,
-          color: isAbove ? redScale(d.colorValue) : grayScale(d.colorValue),
-        };
-      });
-    }, [dataWithColorValue, regressionDatum, redScale, grayScale]);
+      return data.map((d) => ({
+        ...d,
+        color: colorScale(d[colorVariable]),
+      }));
+    }, [data, colorScale, colorVariable]);
     // Memoize coloredAndRaisedData
     const coloredAndRaisedData = useMemo(() => {
       let result = coloredData;
@@ -188,10 +141,18 @@ export default withTooltip<DotsProps, PointsRange>(
         voronoi<PointsRange>({
           x: (d) => x(d[xVariable]) ?? 0,
           y: (d) => y(d[yVariable]) ?? 0,
-          width,
-          height,
-        })(data),
-      [width, height, x, y]
+          width: width - margin.left,
+          height: innerHeight,
+        })(coloredAndRaisedData),
+      [
+        innerWidth,
+        innerHeight,
+        x,
+        y,
+        xVariable,
+        yVariable,
+        coloredAndRaisedData,
+      ]
     );
 
     const handleMouseMove = useCallback(
@@ -202,12 +163,22 @@ export default withTooltip<DotsProps, PointsRange>(
 
         if (!point) return;
         const neighborRadius = 100;
-        const closest = voronoiLayout.find(point.x, point.y, neighborRadius);
+        // Adjust the point coordinates to account for the margin
+        const adjustedPoint = {
+          x: point.x - margin.left,
+          y: point.y - margin.top,
+        };
+        const closest = voronoiLayout.find(
+          adjustedPoint.x,
+          adjustedPoint.y,
+          neighborRadius
+        );
+
         if (closest && !isBrushing) {
           setHoveredPointId(closest.data.geoid);
           showTooltip({
-            tooltipLeft: x(closest.data[xVariable]),
-            tooltipTop: y(closest.data[yVariable]),
+            tooltipLeft: x(closest.data[xVariable]) + margin.left,
+            tooltipTop: y(closest.data[yVariable]) + margin.top,
             tooltipData: closest.data,
           });
         } else {
@@ -216,38 +187,32 @@ export default withTooltip<DotsProps, PointsRange>(
         }
       },
       [
-        showTooltip,
-        hideTooltip,
         voronoiLayout,
+        isBrushing,
         x,
         y,
-        isBrushing,
         xVariable,
         yVariable,
+        showTooltip,
+        hideTooltip,
       ]
     );
 
     const handleMouseLeave = useCallback(() => {
       tooltipTimeout = window.setTimeout(() => {
         hideTooltip();
-        // setHoveredPoint({ geoid: null });
       }, 300);
     }, [hideTooltip]);
 
-    // NOTE: Brushing
-    const handleMouseDown = useCallback(
-      (event: React.MouseEvent) => {
-        setIsBrushing(true);
-        hideTooltip();
-      },
-      [hideTooltip]
-    );
+    const handleMouseDown = useCallback(() => {
+      setIsBrushing(true);
+      hideTooltip();
+      setSelectedState({ id: 0, name: "US" });
+    }, [hideTooltip]);
 
     const handleMouseUp = useCallback(() => {
       setIsBrushing(false);
-
-      console.log("Brushed circles after completion:", currentBrushSelection);
-    }, [currentBrushSelection]);
+    }, [currentBrushSelection]); // Add dependencies here
 
     const handleBrushChange = (domain: Bounds | null) => {
       if (!domain) return;
@@ -266,8 +231,18 @@ export default withTooltip<DotsProps, PointsRange>(
 
       setCurrentBrushSelection(selectedPointsSet);
       setBrushedCircles(currentBrushSelection);
+      updateSelectedCounties(Array.from(currentBrushSelection));
     };
-
+    const selectedBoxStyle = useMemo(
+      () => ({
+        fill: "steelblue",
+        fillOpacity: selectedState.id === 0 ? 0.2 : 0,
+        stroke: "steelblue",
+        strokeWidth: 1,
+        strokeOpacity: selectedState.id === 0 ? 0.8 : 0,
+      }),
+      [selectedState]
+    );
     return (
       <>
         <svg
@@ -276,21 +251,9 @@ export default withTooltip<DotsProps, PointsRange>(
           style={{
             maxHeight: height,
             height: "100%",
-            cursor: isBrushing ? "crosshair" : "default",
+            cursor: isBrushing ? "crosshair" : "pointer",
           }}
         >
-          <rect
-            width={width}
-            height={height}
-            rx={14}
-            fill="white"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            onTouchMove={handleMouseMove}
-            onTouchEnd={handleMouseLeave}
-            onMouseDown={handleMouseDown}
-            onMouseUp={handleMouseUp}
-          />
           <Group left={margin.left} top={margin.top}>
             <GridRows scale={y} width={xMax} height={yMax} stroke="#F3F3F3" />
             <GridColumns
@@ -299,17 +262,7 @@ export default withTooltip<DotsProps, PointsRange>(
               height={yMax}
               stroke="#F3F3F3"
             />
-            <line x1={xMax} x2={xMax} y1={0} y2={yMax} stroke="#e0e0e0" />
-            {/* <Line
-              from={{
-                x: x(regressionDatum[0][0]),
-                y: y(regressionDatum[0][1]),
-              }}
-              to={{ x: x(regressionDatum[1][0]), y: y(regressionDatum[1][1]) }}
-              stroke="grey"
-              strokeWidth={3}
-              strokeDasharray="35,15"
-            ></Line> */}
+
             <AxisBottom
               top={yMax}
               scale={x}
@@ -331,51 +284,42 @@ export default withTooltip<DotsProps, PointsRange>(
                   fill={styles.fill}
                   stroke={styles.stroke}
                   strokeWidth={styles.strokeWidth}
+                  opacity={styles.opacity}
                   style={{
                     transition: "all 0.3s ease-in-out",
                   }}
                 />
               );
             })}
-            {/* {voronoiLayout.polygons().map((polygon, i) => (
-              <VoronoiPolygon
-                key={`polygon-${i}`}
-                polygon={polygon}
-                fill="white"
-                stroke="red"
-                strokeWidth={1}
-                strokeOpacity={0.2}
-                fillOpacity={tooltipData === polygon.data ? 0.5 : 0}
-              />
-            ))} */}
-            {isBrushing && (
-              <Brush
-                xScale={x}
-                yScale={y}
-                width={xMax}
-                height={yMax}
-                handleSize={8}
-                resizeTriggerAreas={[
-                  "left",
-                  "right",
-                  "top",
-                  "bottom",
-                  "center",
-                ]}
-                brushDirection="both"
-                initialBrushPosition={null}
-                onChange={handleBrushChange}
-                onBrushEnd={handleMouseUp}
-                useWindowMoveEvents
-              />
-            )}
+
+            <Brush
+              xScale={x}
+              yScale={y}
+              width={width - margin.left}
+              height={innerHeight}
+              margin={margin}
+              handleSize={8}
+              resizeTriggerAreas={["left", "right", "top", "bottom", "center"]}
+              brushDirection="both"
+              initialBrushPosition={null}
+              onChange={handleBrushChange}
+              onBrushStart={handleMouseDown}
+              onBrushEnd={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              useWindowMoveEvents
+              onVoronoiMouseMove={handleMouseMove}
+              selectedBoxStyle={selectedBoxStyle}
+            />
           </Group>
         </svg>
         {tooltipOpen &&
           tooltipData &&
           tooltipLeft != null &&
           tooltipTop != null && (
-            <Tooltip left={tooltipLeft + 10} top={tooltipTop - 50}>
+            <Tooltip
+              left={tooltipLeft + margin.left}
+              top={tooltipTop + margin.top}
+            >
               <div>
                 <strong>Rating:</strong> {tooltipData[xVariable]}
               </div>

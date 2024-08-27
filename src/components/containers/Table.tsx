@@ -2,7 +2,14 @@
 "use client";
 /* eslint-disable react/display-name */
 
-import * as React from "react";
+import {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,6 +18,7 @@ import {
   ColumnDef,
   SortingState,
   flexRender,
+  RowPinningState,
 } from "@tanstack/react-table";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -26,20 +34,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import TableTailwind from "./TableTailwindCSS";
+import { useMapContext } from "@/lib/context";
 
 import * as d3 from "d3";
 
 const formatDecimal = d3.format(".1f");
-const xVariable = "L_cc_heatscore";
-const yVariable = "R_heat_worry";
-const colorVariable = "gap_cc_heatscore";
+
 const createSortableHeader =
   (label: string) =>
   ({ column }) =>
     (
       <Button
         variant="ghost"
-        className="px-0 whitespace-nowrap group"
+        className="px-0 whitespace-nowrap group text-[black]"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
         {label}
@@ -60,39 +67,51 @@ const createSortableHeader =
     );
 const columns = [
   {
-    accessorKey: "county",
+    accessorKey: "County_name",
     header: createSortableHeader("County"),
     cell: ({ getValue }) => getValue().replace(" County", ""),
-    size: 150,
+    size: 120,
   },
   {
     accessorKey: "state",
     header: createSortableHeader("State"),
-    size: 150,
+    size: 80,
   },
   {
-    accessorKey: colorVariable,
+    accessorKey: "gap",
     header: createSortableHeader("Gap"),
     cell: ({ getValue }) => formatDecimal(getValue()),
-    size: 50,
+    size: 80,
   },
   {
-    accessorKey: xVariable,
+    accessorKey: "xValue",
     header: createSortableHeader("Risk"),
     cell: ({ getValue }) => formatDecimal(getValue()),
+    size: 80,
   },
   {
-    accessorKey: yVariable,
+    accessorKey: "yValue",
     header: createSortableHeader("Worry"),
     cell: ({ getValue }) => formatDecimal(getValue()),
+    size: 80,
   },
 ];
 // eslint-disable-next-line react/display-name
-export default function DataTableDemo({ data, colorScale, height, xVariable, yVariable, colorVariable }) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [filterValue, setFilterValue] = React.useState("");
-  const [columnFilters, setColumnFilters] = React.useState([]);
-  const [rowSelection, setRowSelection] = React.useState({});
+export default function DataTableDemo({
+  data,
+
+  height,
+  xVariable,
+  yVariable,
+  colorVariable,
+}) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [filterValue, setFilterValue] = useState("");
+
+  const [rowPinning, setRowPinning] = useState<RowPinningState>({});
+
+  const { colorScale, selectedCounties, updateSelectedCounties } =
+    useMapContext();
 
   const table = useReactTable({
     data,
@@ -104,47 +123,52 @@ export default function DataTableDemo({ data, colorScale, height, xVariable, yVa
     globalFilterFn: "includesString", // Use the built-in filter function
     state: {
       sorting,
-      rowSelection,
+      rowPinning: { top: selectedCounties },
       globalFilter: filterValue, // Use globalFilter instead of columnFilters
     },
     onGlobalFilterChange: setFilterValue,
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
+    onRowPinningChange: (updater) => {
+      const newPinning =
+        typeof updater === "function"
+          ? updater({ top: selectedCounties })
+          : updater;
+      console.log(newPinning);
+      updateSelectedCounties(newPinning.top);
+    },
+    enableRowPinning: true,
+    keepPinnedRows: false,
   });
-  const [hoveredRowIndex, setHoveredRowIndex] = React.useState<number | null>(
-    null
-  );
-  const selectedRows = React.useMemo(
-    () => table.getFilteredSelectedRowModel().rows,
-    [table, rowSelection]
-  );
+  const combinedPinnedRows = useMemo(() => {
+    const tablePinnedRows = table.getTopRows().map((row) => row.id);
+    return [...new Set([...selectedCounties, ...tablePinnedRows])];
+  }, [selectedCounties, table.getTopRows()]);
+  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
-  const unselectedRows = React.useMemo(
-    () =>
-      table.getFilteredRowModel().rows.filter((row) => !rowSelection[row.id]),
-    [table, rowSelection]
-  );
   const { rows } = table.getRowModel();
-console.log(table.getSelectedRowModel().rows)
-  const parentRef = React.useRef<HTMLDivElement>(null);
-  const tableRef = React.useRef<HTMLTableElement>(null);
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   // Update the virtualizer to use the filtered rows count
   const virtualizer = useVirtualizer({
-    count: table.getFilteredRowModel().rows.length,
+    count: table.getCenterRows().length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
     overscan: 20, // 20 rows to render before and after the visible area
     initialOffset: 0, // start at the top of the table
+    scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
 
+  console.log(selectedCounties);
   return (
     <>
       <Input
         placeholder="Filter counties..."
-        value={(table.getColumn("county")?.getFilterValue() as string) ?? ""}
+        value={
+          (table.getColumn("County_name")?.getFilterValue() as string) ?? ""
+        }
         onChange={(event) =>
-          table.getColumn("county")?.setFilterValue(event.target.value)
+          table.getColumn("County_name")?.setFilterValue(event.target.value)
         }
         className="w-full mb-4 "
       />
@@ -181,33 +205,74 @@ console.log(table.getSelectedRowModel().rows)
             ))}
           </TableHeader>
           <TableBody
-            className="grid relative"
-            style={{ height: virtualizer.getTotalSize() + "px" }}
+            className="flex flex-col relative"
+            style={{
+              height: `${
+                virtualizer.getTotalSize() + table.getTopRows().length * 35
+              }px`,
+            }}
           >
-             {selectedRows.map((row) => (
+            {table.getTopRows().map((row, rowIndex) => (
               <TableRow
+                data-index={rowIndex}
+                onClick={() => {
+                  const isCurrentlyPinned = selectedCounties.includes(row.id);
+
+                  const newSelectedCounties = isCurrentlyPinned
+                    ? selectedCounties.filter((id) => id !== row.id)
+                    : [...selectedCounties, row.original];
+                  updateSelectedCounties(newSelectedCounties);
+                  row.pin("top");
+                }}
                 key={row.id}
-                className="flex w-full z-30 transition-colors duration-200 hover:bg-gray-100 cursor-pointer bg-blue-50"
+                ref={(node) => virtualizer.measureElement(node)}
+                className="flex  bg-white sticky w-full z-40 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
+                style={{
+                  top: `${rowIndex * 35 + 50}px`, // because header is 50px
+                  height: "35px",
+                  borderBottom:
+                    rowIndex === table.getTopRows().length - 1
+                      ? "2px solid #E0E0E0"
+                      : "none",
+                }}
+
+                // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
+                // onMouseLeave={() => setHoveredRowIndex(null)}
               >
-                <TableCell className="flex items-center">
-                  <Checkbox
-                    checked={row.getIsSelected()}
-                    onCheckedChange={(value) => row.toggleSelected(!!value)}
-                  />
-                </TableCell>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className="flex py-1 pl-0 truncate z-10"
+                    className="flex py-1 pl-0 truncate z-10 pointer-events-none w-full"
                     style={{
                       width: cell.column.getSize() + "px",
-                      backgroundColor:
-                        cell.column.id === color
-                          ? colorScale(cell.getValue())
-                          : "transparent",
+                      backgroundColor: (() => {
+                        if (cell.column.id === colorVariable) {
+                          const { h, s, l, opacity } = d3.hsl(
+                            colorScale(cell.getValue())
+                          );
+                          // Adjust the lightness (l) value as needed
+                          // You can change this value to adjust the lightness
+                          return d3
+                            .hsl(h, s * 1, 0.61, opacity * 0.8)
+                            .toString();
+                        } else if (rowIndex % 2 === 1) {
+                          return "#F0F0F0";
+                        } else {
+                          return "transparent";
+                        }
+                      })(),
                     }}
                   >
-                    <div className="truncate">
+                    <div
+                      className="truncate text-xs text-right"
+                      style={{
+                        color:
+                          cell.column.id === colorVariable &&
+                          cell.getValue() > 0.9
+                            ? "white"
+                            : "black",
+                      }}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -217,40 +282,68 @@ console.log(table.getSelectedRowModel().rows)
                 ))}
               </TableRow>
             ))}
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const row = unselectedRows[virtualRow.index];
+
+            {virtualizer.getVirtualItems().map((virtualRow, rowIndex) => {
+              const row = table.getCenterRows()[virtualRow.index];
               if (!row) return null;
+
               return (
                 <TableRow
                   key={row.id}
                   data-index={virtualRow.index}
                   ref={(node) => virtualizer.measureElement(node)}
-                  className="flex absolute w-full z-30 transition-colors duration-200 hover:bg-gray-100 cursor-pointer"
+                  className="flex absolute w-full z-30 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
                   style={{
+                    //  add this, table.getTopRows().length * 35 +, to translateY is like add scrollMargin
                     transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  onClick={() => {
+                    const isCurrentlyPinned = selectedCounties.includes(row.id);
+
+                    const newSelectedCounties = isCurrentlyPinned
+                      ? selectedCounties.filter((id) => id !== row.id)
+                      : [...selectedCounties, row.original];
+                    console.log(newSelectedCounties);
+                    updateSelectedCounties(newSelectedCounties);
+                    row.pin("top");
                   }}
                   // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
                   // onMouseLeave={() => setHoveredRowIndex(null)}
                 >
-                    <TableCell className="flex items-center">
-                    <Checkbox
-                      checked={row.getIsSelected()}
-                      onCheckedChange={(value) => row.toggleSelected(!!value)}
-                    />
-                  </TableCell>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className="flex py-1 pl-0 truncate z-10 pointer-events-none"
+                      className="flex py-1 pl-0 truncate z-10 pointer-events-none w-full"
                       style={{
                         width: cell.column.getSize() + "px",
-                        backgroundColor:
-                          cell.column.id === color
-                            ? colorScale(cell.getValue())
-                            : "transparent",
+                        backgroundColor: (() => {
+                          if (cell.column.id === colorVariable) {
+                            const { h, s, l, opacity } = d3.hsl(
+                              colorScale(cell.getValue())
+                            );
+                            // Adjust the lightness (l) value as needed
+                            // You can change this value to adjust the lightness
+                            return d3
+                              .hsl(h, s * 1, 0.61, opacity * 0.8)
+                              .toString();
+                          } else if (rowIndex % 2 === 1) {
+                            return "#F0F0F0";
+                          } else {
+                            return "transparent";
+                          }
+                        })(),
                       }}
                     >
-                      <div className="truncate">
+                      <div
+                        className="truncate text-xs text-right"
+                        style={{
+                          color:
+                            cell.column.id === colorVariable &&
+                            cell.getValue() > 0.9
+                              ? "white"
+                              : "black",
+                        }}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
@@ -266,4 +359,20 @@ console.log(table.getSelectedRowModel().rows)
       </div>
     </>
   );
+}
+
+function getCellBackgroundColor(cell, colorVariable, colorScale, rowIndex) {
+  if (cell.column.id === colorVariable) {
+    const { h, s, l, opacity } = d3.hsl(colorScale(cell.getValue()));
+    return d3.hsl(h, s * 1, 0.61, opacity * 0.8).toString();
+  } else if (rowIndex % 2 === 1) {
+    return "#F0F0F0";
+  }
+  return "transparent";
+}
+
+function getCellTextColor(cell, colorVariable) {
+  return cell.column.id === colorVariable && cell.getValue() > 0.9
+    ? "white"
+    : "black";
 }

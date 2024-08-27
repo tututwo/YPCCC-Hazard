@@ -1,6 +1,6 @@
 import React from "react";
 
-const ColorLegend = ({ onSelectColor }) => {
+const ColorLegend = ({ onSelectColor, width, height }) => {
   const colors = [
     { value: 1.0, color: "#b91c1c" },
     { value: 0.8, color: "#dc2626" },
@@ -18,7 +18,7 @@ const ColorLegend = ({ onSelectColor }) => {
   const containerHeight = colors.length * 24 + (colors.length - 1) * 2; // 24px for each color bar, 2px for gaps
 
   return (
-    <div className="inline-flex flex-col items-start">
+    <div className="inline-flex flex-col items-start w-full h-full">
       <div className="flex items-start mb-2">
         <div className="flex flex-col items-end mr-1">
           {colors.map((color, index) => (

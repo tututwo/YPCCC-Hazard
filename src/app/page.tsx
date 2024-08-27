@@ -52,9 +52,9 @@ import ExpandButton from "@/components/ui/expandButton";
 // NOTE: Styles
 import "../styles/InputButton.css";
 
-  const xVariable = "xValue";
-  const yVariable = "yValue";
-  const colorVariable = "gap";
+const xVariable = "xValue";
+const yVariable = "yValue";
+const colorVariable = "gap";
 
 const categories = [
   {
@@ -69,23 +69,6 @@ const categories = [
 gsap.registerPlugin(useGSAP);
 
 // NOTE: zoom-to-state metrics
-
-const colorScale = d3
-  .scaleLinear<string>()
-  .domain([-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1])
-  .range([
-    "#374151",
-    "#4b5563",
-    "#6b7280",
-    "#9ca3af",
-    "#fecaca",
-    "#fca5a5",
-    "#f87171",
-    "#ef4444",
-    "#dc2626",
-    "#b91c1c",
-  ])
-  .interpolate(d3.interpolateRgb);
 
 const DynamicCalculateStateViews = dynamic(
   () =>
@@ -116,9 +99,7 @@ export default function Home() {
     setIsExpanded(false);
   }, []);
   useEffect(() => {
-    csv(
-      "/data.csv"
-    ).then((loadedData) => {
+    csv("/data.csv").then((loadedData) => {
       loadedData.forEach((d) => {
         d[xVariable] = +d[xVariable];
         d[yVariable] = +d[yVariable];
@@ -141,56 +122,55 @@ export default function Home() {
         overrideClassName
         className="z-50"
       />
+      <ExpandableSection
+        isExpanded={isExpanded}
+        isDesktop={isDesktop}
+        categories={categories}
+      ></ExpandableSection>
       <MapProvider>
-        <main className="flex-grow h-screen flex flex-col desktop:flex-row desktop:flex-nowrap w-full  relative overflow-hidden ">
-          <ExpandableSection
-            isExpanded={isExpanded}
-            isDesktop={isDesktop}
-            categories={categories}
-          ></ExpandableSection>
+        <header className="w-full bg-[#D2E4F6] mb-12">
+          <div className=" max-w-sm items-center space-x-2 ">
+            {" "}
+            <StateButton />
+          </div>
+        </header>
+        <main className="flex-grow h-screen flex flex-col desktop:flex-nowrap w-full  relative  ">
           {/* NOTE: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
-
+          {/* NOTE:Map Section */}
           <section
-            className="w-full desktop:flex-grow desktop:flex-shrink pl-6 pr-4 pb-6 flex flex-col "
+            className="w-full min-h-[700px] desktop:flex-grow desktop:flex-shrink   pb-6 flex flex-row gap-10"
             onMouseEnter={handleMouseLeave}
           >
+            {/* NOTE:Actual Map */}
+            <figure
+              ref={parentRef}
+              className="flex-grow h-full relative z-10 overflow-hidden "
+            >
+              <DeckglMap
+                width={width}
+                height={height}
+                zoomToWhichState={zoomToWhichState}
+                geographyData={counties}
+                colorVariable={colorVariable}
+              />
+            </figure>
+
+            {/*NOTE: Legend */}
             {isDesktop && (
-              <div className="legend mb-4 min-w-[240px]">
-                {" "}
-                <div className="flex w-full max-w-sm items-center space-x-2 ">
-                  <StateButton />
-                  {/* <Input type="email" placeholder="Address" />
-                <Button type="submit">Search</Button> */}
-                </div>
+              <div className="legend mb-4 desktop:w-[144px]">
+                {/* <ParentSize>
+                  {({ width, height }) => (
+                    <Legend width={width} height={height} />
+                  )}
+                </ParentSize> */}
               </div>
             )}
-            <div
-              className="grow-[2] max-h-[70vh] flex flex-col desktop:flex-row"
-              id="map-container"
-            >
-              <section
-                ref={parentRef}
-                className="flex-grow h-full md:order-2 relative z-10 overflow-hidden"
-              >
-                <DeckglMap
-                  width={width}
-                  height={height}
-                  zoomToWhichState={zoomToWhichState}
-                  geographyData={counties}
-                  colorScale={colorScale}
-                  colorVariable={colorVariable}
-                />
-              </section>
+          </section>
 
-              {/* <section className="flex-grow md:order-2 relative z-10 ">
-                <Map width={1200} height={500} />
-                <DeckglMap width={1200} height={500} />
-              </section> */}
-              {/* <section className="h-64 md:h-auto desktop:w-[100px] md:order-1">
-                <Legend></Legend>
-              </section> */}
-            </div>
+          {/* Table + Plots Section */}
 
+          <section className=" desktop:min-h-[600px] w-full flex flex-row gap-10">
+            {/* NOTE: Scatterplot */}
             <div className="mt-4 flex-grow" id="scatterplot-container">
               <h2 className="text-lg font-bold ml-8">
                 Heat worry and Heat rating of all counties
@@ -212,21 +192,8 @@ export default function Home() {
                 </ParentSize>
               </figure>
             </div>
-            {isDesktop && (
-              <div className="annotation-section mt-4">
-                {/* Annotation content */}
-              </div>
-            )}
-          </section>
 
-          {isDesktop ? (
             <aside className="w-full desktop:w-1/3 flex-shrink-0 pr-1 flex flex-col">
-              <Button
-                asChild
-                className="bg-[#E8E8E8] w-full min-h-[4rem] text-xl rounded-none text-slate-950 font-bold"
-              >
-                <Link href="/login">Explore Mode &gt;&nbsp;</Link>
-              </Button>
               <div className="mt-4 mb-1 ">
                 <b className="text-xl">3143 Counties</b> in the US
               </div>
@@ -236,7 +203,6 @@ export default function Home() {
                     return (
                       <DataTableDemo
                         data={data}
-                        colorScale={colorScale}
                         height={height}
                         xVariable={xVariable}
                         yVariable={yVariable}
@@ -266,11 +232,7 @@ export default function Home() {
                 &nbsp;&nbsp;Download Data
               </Button>
             </aside>
-          ) : (
-            <div className="table-container">
-              <DataTableDemo data={data}></DataTableDemo>
-            </div>
-          )}
+          </section>
         </main>
 
         {!isDesktop && (
