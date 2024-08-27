@@ -34,6 +34,8 @@ export default class USMapLayer extends CompositeLayer {
         const a = selectedCounties.length == 0 ? 255 : selectedCounties.includes(d.properties.GEOID) ? 255 : 100;
         return [r, g, b, a];
       },
+      pickable: true,
+      autoHighlight: false,
       getLineColor: [255, 255, 255, 200],
       getLineWidth: 0,
       lineWidthUnits: 'pixels',
