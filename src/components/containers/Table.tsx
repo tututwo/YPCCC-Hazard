@@ -236,7 +236,7 @@ export default function DataTableDemo({
                 }}
                 key={row.id}
                 ref={(node) => virtualizer.measureElement(node)}
-                className="flex  bg-white sticky w-full z-40 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
+                className="flex  bg-white w-full z-40 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
                 style={{
                   top: `${rowIndex * 35 + 50}px`, // because header is 50px
                   height: "35px",

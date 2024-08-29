@@ -43,9 +43,9 @@ import { useParentSize, ParentSize } from "@visx/responsive";
 import Scatterplot from "@/components/containers/Scatterplot";
 import Map from "@/components/containers/Map";
 import DeckglMap from "@/components/containers/DeckglMap";
-import Legend from "@/components/containers/ui-container/Legend";
+import Legend from "@/components/ui/Legend";
 import { MapProvider } from "@/lib/context";
-import StateButton from "@/components/containers/ui-container/StateButton";
+import StateButton from "@/components/ui/StateButton";
 import ExpandableSection from "@/components/containers/ExpandableSection";
 import ExpandButton from "@/components/ui/expandButton";
 

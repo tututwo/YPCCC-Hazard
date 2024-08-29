@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as turf from "@turf/turf";
 import { WebMercatorViewport } from "@deck.gl/core";
 export default function calculateStateViewsFromCounties(
