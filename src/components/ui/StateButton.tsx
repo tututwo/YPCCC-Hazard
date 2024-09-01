@@ -2,7 +2,8 @@ import { Fragment, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 
-import { useMapContext } from "@/lib/context";
+// import { useMapContext } from "@/lib/context";
+import { useMapStore } from '@/lib/store';
 const people = [
   {
     id: 10,
@@ -219,7 +220,7 @@ function classNames(...classes) {
 }
 
 export default function StateButton() {
-  const { selectedState, setSelectedState } = useMapContext();
+  const { selectedState, setSelectedState } = useMapStore();
 
   return (
     <Listbox value={selectedState} onChange={setSelectedState} >

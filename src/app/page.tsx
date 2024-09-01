@@ -26,8 +26,8 @@ import * as d3 from "d3";
 import {
   useEffect,
   useState,
-  createContext,
-  useContext,
+  // createContext,
+  // useContext,
   useRef,
   useLayoutEffect,
   useCallback,
@@ -44,7 +44,7 @@ import {Scatterplot} from "@/components/containers/Scatterplot";
 import Map from "@/components/containers/Map";
 import DeckglMap from "@/components/containers/DeckglMap";
 import Legend from "@/components/ui/Legend";
-import { MapProvider } from "@/lib/context";
+// import { MapProvider } from "@/lib/context";
 import StateButton from "@/components/ui/StateButton";
 import ExpandableSection from "@/components/containers/ExpandableSection";
 import ExpandButton from "@/components/ui/expandButton";
@@ -84,12 +84,6 @@ export default function Home() {
   // const [zoomToWhichState, setZoomToWhichState] = useState({});
   const { parentRef, width, height } = useParentSize();
 
-  // useEffect(() => {
-  //   if (width > 0 && height > 0) {
-  //     const result = calculateStateViewsFromCounties(counties, width, height);
-  //     setZoomToWhichState(result);
-  //   }
-  // }, [width, height]);
 
   const handleMouseEnter = useCallback(() => {
     setIsExpanded(true);
@@ -127,7 +121,7 @@ export default function Home() {
         isDesktop={isDesktop}
         categories={categories}
       ></ExpandableSection>
-      <MapProvider>
+
         <header className="w-full bg-[#D2E4F6] mb-12">
           <div className=" max-w-sm items-center space-x-2 ">
             {" "}
@@ -240,7 +234,7 @@ export default function Home() {
             <button className="download-button w-full">Download data</button>
           </footer>
         )}
-      </MapProvider>
+
     </>
   );
 }

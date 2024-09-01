@@ -13,7 +13,8 @@ import { scaleThreshold } from "d3-scale";
 import { regressionLinear } from "d3-regression";
 import { pointToLineDistance } from "@turf/point-to-line-distance";
 import { lineString, point } from "@turf/helpers";
-import { useMapContext } from "@/lib/context";
+// import { useMapContext } from "@/lib/context";
+import { useMapStore } from '@/lib/store';
 // NOTE: VISX
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
@@ -72,14 +73,16 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       Set<string>
     >(new Set());
     const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
+  const { selectedState, setSelectedState,colorScale, selectedCounties, updateSelectedCounties } = useMapStore();
 
-    const {
-      selectedState,
-      setSelectedState,
-      colorScale,
-      selectedCounties,
-      updateSelectedCounties,
-    } = useMapContext();
+
+  // const {
+  //   selectedState,
+  //   setSelectedState,
+  //   colorScale,
+  //   selectedCounties,
+  //   updateSelectedCounties,
+  // } = useMapContext();
 
     const circleStyles = useMemo(() => {
       return (point: PointsRange) => {

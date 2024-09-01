@@ -8,7 +8,8 @@ import React, {
 } from "react";
 import * as d3 from "d3";
 import { Map } from "react-map-gl/maplibre";
-import { useMapContext } from "@/lib/context";
+// import { useMapContext } from "@/lib/context";
+import { useMapStore } from '@/lib/store';
 import DeckGL from "@deck.gl/react";
 import { MapViewState, FlyToInterpolator } from "@deck.gl/core";
 import { GeoJsonLayer } from "@deck.gl/layers";
@@ -45,12 +46,14 @@ const DeckglMap = ({
   // // // // // // // // // // // // // // // // // //
   // // // // // // // // STATE // // // // // // // //
   // // // // // // // // // // // // // // // // // //
-  const {
-    selectedState,
-    colorScale,
-    selectedCounties,
-    updateSelectedCounties,
-  } = useMapContext();
+  // const {
+  //   selectedState,
+  //   colorScale,
+  //   selectedCounties,
+  //   updateSelectedCounties,
+  // } = useMapContext();
+  const { selectedState, colorScale, selectedCounties, updateSelectedCounties } = useMapStore();
+
   const [initialViewState, setInitialViewState] = useState({
     longitude: -98.5795,
     latitude: 39.8283,

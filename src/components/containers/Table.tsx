@@ -34,7 +34,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import TableTailwind from "./TableTailwindCSS";
-import { useMapContext } from "@/lib/context";
+import { useMapStore } from '@/lib/store';
+
 
 import * as d3 from "d3";
 
@@ -110,8 +111,9 @@ export default function DataTableDemo({
 
   const [rowPinning, setRowPinning] = useState({});
 
-  const { colorScale, selectedCounties, updateSelectedCounties } =
-    useMapContext();
+  // const { colorScale, selectedCounties, updateSelectedCounties } =
+  //   useMapContext();
+    const { colorScale, selectedCounties, updateSelectedCounties } = useMapStore();
 
   const table = useReactTable({
     data,
