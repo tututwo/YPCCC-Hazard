@@ -35,12 +35,12 @@ import {
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import * as turf from "@turf/turf";
-import { WebMercatorViewport } from "@deck.gl/core";
-import calculateStateViewsFromCounties from "@/lib/calculateStateViews";
-
+// import { WebMercatorViewport } from "@deck.gl/core";
+// import calculateStateViewsFromCounties from "@/lib/calculateStateViews";
+import { zoomToWhichState } from "@/lib/calculateStateViews";
 import { useParentSize, ParentSize } from "@visx/responsive";
 // NOTE: Custom UI Components
-import Scatterplot from "@/components/containers/Scatterplot";
+import {Scatterplot} from "@/components/containers/Scatterplot";
 import Map from "@/components/containers/Map";
 import DeckglMap from "@/components/containers/DeckglMap";
 import Legend from "@/components/ui/Legend";
@@ -70,26 +70,26 @@ gsap.registerPlugin(useGSAP);
 
 // NOTE: zoom-to-state metrics
 
-const DynamicCalculateStateViews = dynamic(
-  () =>
-    import("@/lib/calculateStateViews").then(
-      (mod) => mod.calculateStateViewsFromCounties
-    ),
-  { ssr: false }
-);
+// const DynamicCalculateStateViews = dynamic(
+//   () =>
+//     import("@/lib/calculateStateViews").then(
+//       (mod) => mod.calculateStateViewsFromCounties
+//     ),
+//   { ssr: false }
+// );
 export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [zoomToWhichState, setZoomToWhichState] = useState({});
+  // const [zoomToWhichState, setZoomToWhichState] = useState({});
   const { parentRef, width, height } = useParentSize();
 
-  useEffect(() => {
-    if (width > 0 && height > 0) {
-      const result = calculateStateViewsFromCounties(counties, width, height);
-      setZoomToWhichState(result);
-    }
-  }, [width, height]);
+  // useEffect(() => {
+  //   if (width > 0 && height > 0) {
+  //     const result = calculateStateViewsFromCounties(counties, width, height);
+  //     setZoomToWhichState(result);
+  //   }
+  // }, [width, height]);
 
   const handleMouseEnter = useCallback(() => {
     setIsExpanded(true);

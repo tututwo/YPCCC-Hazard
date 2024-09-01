@@ -43,8 +43,8 @@ const DeckglMap = ({
   colorVariable,
 }) => {
   // // // // // // // // // // // // // // // // // //
-  // // // // // // // // STATE // // // // // // // // 
-  // // // // // // // // // // // // // // // // // // 
+  // // // // // // // // STATE // // // // // // // //
+  // // // // // // // // // // // // // // // // // //
   const {
     selectedState,
     colorScale,
@@ -70,8 +70,8 @@ const DeckglMap = ({
   const mapRef = useRef(null);
 
   // // // // // // // // // // // // // // // // // //
-  // // // // // // // // Callbacks // // // // // // // // 
-  // // // // // // // // // // // // // // // // // // 
+  // // // // // // // // Callbacks // // // // // // // //
+  // // // // // // // // // // // // // // // // // //
   const onHover = useCallback((info) => {
     setHoverInfo(info.object ? info : null);
   }, []);
@@ -81,8 +81,8 @@ const DeckglMap = ({
   }, []);
 
   // // // // // // // // // // // // // // // // // //
-  // // // // // // // // Effects // // // // // // // // 
-  // // // // // // // // // // // // // // // // // // 
+  // // // // // // // // Effects // // // // // // // //
+  // // // // // // // // // // // // // // // // // //
   useEffect(() => {
     const newViewState = {
       minZoom: 3,
@@ -141,72 +141,54 @@ const DeckglMap = ({
   const layers = useMemo(
     () =>
       [
-        new USMapLayer({
-          id: "us-map-layer",
-          geographyData,
-          colorScale,
-          colorVariable,
-          alphaValues,
-          selectedCounties,
+        new GeoJsonLayer({
+          id: "county-layer",
+          data: geographyData,
+          getFillColor: (d) => {
+            const { r, g, b } = d3.color(
+              colorScale(d.properties[colorVariable])
+            );
+            const a =
+              selectedCounties.length == 0
+                ? 255
+                : selectedCounties.includes(d.properties.GEOID)
+                ? 255
+                : 100;
+            return [r, g, b, a];
+          },
+          pickable: true,
+          autoHighlight: false,
+          getLineColor: [255, 255, 255, 200],
+          getLineWidth: 0,
+          lineWidthUnits: "pixels",
+          lineWidthScale: 1,
+          // lineWidthMinPixels: 1,
+          // lineWidthMaxPixels: 1,
+          transitions: {
+            getFillColor: 500,
+            getLineColor: 500,
+          },
+          updateTriggers: {
+            getFillColor: [selectedCounties],
+          },
         }),
-        selectedState.name === "US" &&
-          new GeoJsonLayer({
-            id: "state-border-layer",
-            data: stateData,
-            filled: false,
-            stroked: true,
-            getLineColor: [255, 255, 255, 200],
-            getLineWidth: 2,
-            lineWidthUnits: "pixels",
-            lineWidthScale: 1,
-            lineWidthMinPixels: 1,
-            lineWidthMaxPixels: 2,
-          }),
+
+        new GeoJsonLayer({
+          id: "state-border-layer",
+          data: stateData,
+          visible: selectedState.name === "US" ? true : false,
+          filled: false,
+          stroked: true,
+          getLineColor: [255, 255, 255, 200],
+          getLineWidth: 2,
+          lineWidthUnits: "pixels",
+          lineWidthScale: 1,
+          lineWidthMinPixels: 1,
+          lineWidthMaxPixels: 2,
+        }),
       ].filter(Boolean),
     [geographyData, selectedState, colorScale, alphaValues, selectedCounties]
   );
-  // const layers = useMemo(
-  //   () =>
-  //     [
-  //       new GeoJsonLayer({
-  //         id: "geojson-layer",
-  //         data: geographyData,
-  //         getFillColor: (d) => {
-  //           const { r, g, b } = d3.color(
-  //             colorScale(d.properties[colorVariable])
-  //           );
-  //           const a = alphaValues[d.properties.STATENAME] * 0.77 || 255;
-  //           return [r, g, b, a];
-  //         },
-  //         pickable: true,
-  //         autoHighlight: false,
-  //         // onHover: (info) => setHoverInfo(info),
-  //         lineWidthUnits: "pixels",
-  //         lineWidthScale: 1,
-  //         lineWidthMinPixels: 0.4,
-  //         lineWidthMaxPixels: 10,
-  //         getLineColor: [205, 209, 209, 100], // Default color
-  //         getLineWidth: 0.5, // Default width
-  //         updateTriggers: {
-  //           getFillColor: [selectedState, colorScale, alphaValues],
-  //         },
-  //       }),
-  //       selectedState.name === "US" &&
-  //         new GeoJsonLayer({
-  //           id: "state-border-layer",
-  //           data: stateData,
-  //           filled: false,
-  //           stroked: true,
-  //           getLineColor: [255, 255, 255, 200],
-  //           getLineWidth: 2,
-  //           lineWidthUnits: "pixels",
-  //           lineWidthScale: 1,
-  //           lineWidthMinPixels: 1,
-  //           lineWidthMaxPixels: 2,
-  //         }),
-  //     ].filter(Boolean),
-  //   [geographyData, selectedState, colorScale, alphaValues]
-  // );
 
   const hoverLayer = useMemo(() => {
     if (!hoverInfo || !hoverInfo.object) return null;
@@ -236,7 +218,6 @@ const DeckglMap = ({
         controller={true}
         layers={[...layers, hoverLayer].filter(Boolean)}
         onHover={onHover}
-        // layers={layers}
       >
         {hoverInfo && hoverInfo.object && (
           <div style={{ ...tooltipStyle, left: hoverInfo.x, top: hoverInfo.y }}>

@@ -44,7 +44,7 @@ function raise<T>(items: T[], raiseIndex: number) {
 const maxDistance = 1;
 const margin = { top: 0, right: 60, bottom: 50, left: 50 };
 
-export default withTooltip<DotsProps, PointsRange>(
+export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   ({
     data,
     xVariable,
@@ -83,7 +83,8 @@ export default withTooltip<DotsProps, PointsRange>(
 
     const circleStyles = useMemo(() => {
       return (point: PointsRange) => {
-        const isBrushed = selectedState.id === 0 && brushedCircles.has(point.geoid);
+        const isBrushed =
+          selectedState.id === 0 && brushedCircles.has(point.geoid);
         const isSelected = selectedCounties.includes(point.geoid);
         const isHovered = hoveredPointId === point.geoid;
         return {
@@ -92,7 +93,6 @@ export default withTooltip<DotsProps, PointsRange>(
           stroke: isSelected ? "black" : isHovered ? "black" : "none",
           strokeWidth: isSelected ? 2 : isHovered ? 1 : 0,
           opacity: isBrushed || isSelected ? 1 : 0.5,
-          transition: 'all 0.3s ease-in-out',
         };
       };
     }, [brushedCircles, hoveredPointId, selectedCounties, selectedState]);
@@ -126,6 +126,7 @@ export default withTooltip<DotsProps, PointsRange>(
     }, [data, colorScale, colorVariable]);
     // Memoize coloredAndRaisedData
     const coloredAndRaisedData = useMemo(() => {
+      console.log("coloredAndRaisedData");
       let result = coloredData;
       if (hoveredPointId) {
         const index = result.findIndex((d) => d.geoid === hoveredPointId);
@@ -136,24 +137,22 @@ export default withTooltip<DotsProps, PointsRange>(
       return result;
     }, [coloredData, hoveredPointId]);
 
-    const voronoiLayout = useMemo(
-      () =>
-        voronoi<PointsRange>({
-          x: (d) => x(d[xVariable]) ?? 0,
-          y: (d) => y(d[yVariable]) ?? 0,
-          width: width - margin.left,
-          height: innerHeight,
-        })(coloredAndRaisedData),
-      [
-        innerWidth,
-        innerHeight,
-        x,
-        y,
-        xVariable,
-        yVariable,
-        coloredAndRaisedData,
-      ]
-    );
+    const voronoiLayout = useMemo(() => {
+      return voronoi<PointsRange>({
+        x: (d) => x(d[xVariable]) ?? 0,
+        y: (d) => y(d[yVariable]) ?? 0,
+        width: width - margin.left,
+        height: innerHeight,
+      })(coloredAndRaisedData);
+    }, [
+      innerWidth,
+      innerHeight,
+      x,
+      y,
+      xVariable,
+      yVariable,
+      coloredAndRaisedData,
+    ]);
 
     const handleMouseMove = useCallback(
       (event: React.MouseEvent | React.TouchEvent) => {
@@ -216,6 +215,7 @@ export default withTooltip<DotsProps, PointsRange>(
 
     const handleBrushChange = (domain: Bounds | null) => {
       if (!domain) return;
+
       const { x0, x1, y0, y1 } = domain;
       const selectedPointsSet = new Set(
         data
@@ -285,8 +285,9 @@ export default withTooltip<DotsProps, PointsRange>(
                   stroke={styles.stroke}
                   strokeWidth={styles.strokeWidth}
                   opacity={styles.opacity}
+                  
                   style={{
-                    transition: "all 0.3s ease-in-out",
+                    transition: "all .1s ease-in-out",
                   }}
                 />
               );

@@ -164,7 +164,7 @@ export default function DataTableDemo({
     count: table.getCenterRows().length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
-    overscan: 20, // 20 rows to render before and after the visible area
+    // overscan: 20, // 20 rows to render before and after the visible area
     initialOffset: 0, // start at the top of the table
     scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
