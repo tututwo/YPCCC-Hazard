@@ -121,26 +121,26 @@ const DeckglMap = ({
     );
   }, [selectedState, zoomToWhichState]);
 
-  useGSAP(
-    () => {
-      const targetAlphas = {};
-      geographyData.features.forEach((feature) => {
-        targetAlphas[feature.properties.STATENAME] =
-          selectedState.name === "US" ||
-          feature.properties.STATENAME === selectedState.name
-            ? 250
-            : 80;
-      });
+  // useGSAP(
+  //   () => {
+  //     const targetAlphas = {};
+  //     geographyData.features.forEach((feature) => {
+  //       targetAlphas[feature.properties.STATENAME] =
+  //         selectedState.name === "US" ||
+  //         feature.properties.STATENAME === selectedState.name
+  //           ? 250
+  //           : 80;
+  //     });
 
-      gsap.to(alphaValues, {
-        ...targetAlphas,
-        duration: 0.88,
-        ease: "power2.inOut",
-        onUpdate: () => setAlphaValues({ ...alphaValues }),
-      });
-    },
-    { dependencies: [selectedState, geographyData] }
-  );
+  //     gsap.to(alphaValues, {
+  //       ...targetAlphas,
+  //       duration: 0.88,
+  //       ease: "power2.inOut",
+  //       onUpdate: () => setAlphaValues({ ...alphaValues }),
+  //     });
+  //   },
+  //   { dependencies: [selectedState, geographyData] }
+  // );
   const layers = useMemo(
     () =>
       [
@@ -168,7 +168,7 @@ const DeckglMap = ({
           // lineWidthMinPixels: 1,
           // lineWidthMaxPixels: 1,
           transitions: {
-            getFillColor: 500,
+            // getFillColor: 500,
             getLineColor: 500,
           },
           updateTriggers: {

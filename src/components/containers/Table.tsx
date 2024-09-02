@@ -34,8 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import TableTailwind from "./TableTailwindCSS";
-import { useMapStore } from '@/lib/store';
-
+import { useMapStore } from "@/lib/store";
 
 import * as d3 from "d3";
 
@@ -100,7 +99,6 @@ const columns = [
 // eslint-disable-next-line react/display-name
 export default function DataTableDemo({
   data,
-
   height,
   xVariable,
   yVariable,
@@ -111,9 +109,8 @@ export default function DataTableDemo({
 
   const [rowPinning, setRowPinning] = useState({});
 
-  // const { colorScale, selectedCounties, updateSelectedCounties } =
-  //   useMapContext();
-    const { colorScale, selectedCounties, updateSelectedCounties } = useMapStore();
+  const { colorScale, selectedCounties, updateSelectedCounties } =
+    useMapStore();
 
   const table = useReactTable({
     data,
@@ -133,15 +130,6 @@ export default function DataTableDemo({
     enableRowPinning: true,
     keepPinnedRows: false,
   });
-
-  // const combinedPinnedRows = useMemo(() => {
-  //   console.log(rowPinning);
-  //   const tablePinnedRows = table.getTopRows().map((row) => row.id);
-  // const selectedCountyRows = table
-  //   .getCenterRows()
-  //   .filter((row) => selectedCounties.includes(row.original.geoid));
-  //   return [...new Set([...selectedCountyRows, ...tablePinnedRows])];
-  // }, [selectedCounties, table.getTopRows()]);
 
   useEffect(() => {
     const newPinning: RowPinningState = {
@@ -170,7 +158,6 @@ export default function DataTableDemo({
     initialOffset: 0, // start at the top of the table
     scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
-
 
   return (
     <>

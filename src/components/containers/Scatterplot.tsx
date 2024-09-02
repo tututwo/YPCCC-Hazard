@@ -7,14 +7,15 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+// NOTE: D3
 import * as d3 from "d3";
 import { Delaunay } from "d3-delaunay";
 import { scaleThreshold } from "d3-scale";
-import { regressionLinear } from "d3-regression";
-import { pointToLineDistance } from "@turf/point-to-line-distance";
-import { lineString, point } from "@turf/helpers";
+
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
 // import { useMapContext } from "@/lib/context";
-import { useMapStore } from '@/lib/store';
+import { useMapStore } from "@/lib/store";
 // NOTE: VISX
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
@@ -45,6 +46,34 @@ function raise<T>(items: T[], raiseIndex: number) {
 const maxDistance = 1;
 const margin = { top: 0, right: 60, bottom: 50, left: 50 };
 
+function drawPoints(
+  canvas,
+  dataset,
+  xVariable,
+  yVariable,
+  colorVariable,
+  xScale,
+  yScale,
+  colorScale
+) {
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  dataset.forEach((d) => {
+    // ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(
+      xScale(d[xVariable]),
+      yScale(d[yVariable]),
+      d.radius ?? 3,
+      0,
+      2 * Math.PI
+    );
+    ctx.fillStyle = colorScale(d[colorVariable]);
+    ctx.fill();
+  });
+}
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   ({
     data,
@@ -62,6 +91,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
+    const canvasRef = useRef(null);
+
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
     const xMax = width - margin.left - margin.right;
@@ -72,33 +103,32 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const [currentBrushSelection, setCurrentBrushSelection] = useState<
       Set<string>
     >(new Set());
-    const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
-  const { selectedState, setSelectedState,colorScale, selectedCounties, updateSelectedCounties } = useMapStore();
+    // FIXME: This is really slow. Improve it
+    const [hoveredPointId, setHoveredPointId] = useState(false);
+    const {
+      selectedState,
+      setSelectedState,
+      colorScale,
+      selectedCounties,
+      updateSelectedCounties,
+    } = useMapStore();
 
-
-  // const {
-  //   selectedState,
-  //   setSelectedState,
-  //   colorScale,
-  //   selectedCounties,
-  //   updateSelectedCounties,
-  // } = useMapContext();
-
-    const circleStyles = useMemo(() => {
-      return (point: PointsRange) => {
-        const isBrushed =
-          selectedState.id === 0 && brushedCircles.has(point.geoid);
-        const isSelected = selectedCounties.includes(point.geoid);
-        const isHovered = hoveredPointId === point.geoid;
-        return {
-          r: isSelected ? 6 : isHovered ? 5 : 3,
-          fill: point.color,
-          stroke: isSelected ? "black" : isHovered ? "black" : "none",
-          strokeWidth: isSelected ? 2 : isHovered ? 1 : 0,
-          opacity: isBrushed || isSelected ? 1 : 0.5,
-        };
-      };
-    }, [brushedCircles, hoveredPointId, selectedCounties, selectedState]);
+    // FIXME: This is really slow. Improve it
+    // const circleStyles = useMemo(() => {
+    //   return (point: PointsRange) => {
+    //     const isBrushed =
+    //       selectedState.id === 0 && brushedCircles.has(point.geoid);
+    //     const isSelected = selectedCounties.includes(point.geoid);
+    //     const isHovered = false;
+    //     return {
+    //       r: isSelected ? 6 : isHovered ? 5 : 3,
+    //       fill: point.color,
+    //       stroke: isSelected ? "black" : isHovered ? "black" : "none",
+    //       strokeWidth: isSelected ? 2 : isHovered ? 1 : 0,
+    //       opacity: isBrushed || isSelected ? 1 : 0.5,
+    //     };
+    //   };
+    // }, [brushedCircles, hoveredPointId, selectedCounties, selectedState]);
 
     // NOTE: Scales
     const x = useMemo(
@@ -129,7 +159,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     }, [data, colorScale, colorVariable]);
     // Memoize coloredAndRaisedData
     const coloredAndRaisedData = useMemo(() => {
-      console.log("coloredAndRaisedData");
       let result = coloredData;
       if (hoveredPointId) {
         const index = result.findIndex((d) => d.geoid === hoveredPointId);
@@ -140,6 +169,27 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       return result;
     }, [coloredData, hoveredPointId]);
 
+    const { contextSafe } = useGSAP(
+      () => {
+        console.log("rendered");
+        gsap.ticker.add(() =>
+          drawPoints(
+            canvasRef.current,
+            coloredAndRaisedData,
+            xVariable,
+            yVariable,
+            colorVariable,
+            x,
+            y,
+            colorScale
+          )
+        );
+      },
+      { dependencies: [coloredAndRaisedData] }
+    );
+    // // // // // // // // // // // // // // // // // //
+    // // // // // // // // Tooltip // // // // // // // //
+    // // // // // // // // // // // // // // // // // //
     const voronoiLayout = useMemo(() => {
       return voronoi<PointsRange>({
         x: (d) => x(d[xVariable]) ?? 0,
@@ -177,14 +227,14 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         );
 
         if (closest && !isBrushing) {
-          setHoveredPointId(closest.data.geoid);
+          // setHoveredPointId(closest.data.geoid);
           showTooltip({
             tooltipLeft: x(closest.data[xVariable]) + margin.left,
             tooltipTop: y(closest.data[yVariable]) + margin.top,
             tooltipData: closest.data,
           });
         } else {
-          setHoveredPointId(null);
+          // setHoveredPointId(null);
           hideTooltip();
         }
       },
@@ -216,7 +266,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       setIsBrushing(false);
     }, [currentBrushSelection]); // Add dependencies here
 
-    const handleBrushChange = (domain: Bounds | null) => {
+    const handleBrushChange = contextSafe((domain: Bounds | null) => {
       if (!domain) return;
 
       const { x0, x1, y0, y1 } = domain;
@@ -231,11 +281,28 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           )
           .map((point) => point.geoid)
       );
-
+      // animation
+      coloredAndRaisedData.forEach(d => {
+        const isBrushed =
+          d[xVariable] >= x0 &&
+          d[xVariable] <= x1 &&
+          d[yVariable] >= y0 &&
+          d[yVariable] <= y1;
+    
+        if (isBrushed) {
+          selectedPointsSet.add(d.geoid);
+        }
+    
+        gsap.to(d, {
+          radius: isBrushed ? 6 : 3,
+          duration: 0.1,
+          ease: "power2.inOut"
+        });
+      });
       setCurrentBrushSelection(selectedPointsSet);
       setBrushedCircles(currentBrushSelection);
       updateSelectedCounties(Array.from(currentBrushSelection));
-    };
+    });
     const selectedBoxStyle = useMemo(
       () => ({
         fill: "steelblue",
@@ -248,12 +315,19 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     );
     return (
       <>
+        <canvas
+          ref={canvasRef}
+          width={innerWidth}
+          height={innerHeight}
+          className="absolute z-0"
+          style={{ top: margin.top + "px", left: margin.left + "px" }}
+        ></canvas>
         <svg
           ref={svgRef}
           width={width}
+          className="absolute z-10 h-full"
           style={{
             maxHeight: height,
-            height: "100%",
             cursor: isBrushing ? "crosshair" : "pointer",
           }}
         >
@@ -275,26 +349,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
               hideAxisLine
             />
             <AxisLeft scale={y} hideTicks hideZero hideAxisLine />
-            {coloredAndRaisedData.map((point, i) => {
-              const styles = circleStyles(point);
-              return (
-                <Circle
-                  key={`point-${point.geoid}`}
-                  className="dot"
-                  cx={x(point[xVariable])}
-                  cy={y(point[yVariable])}
-                  r={styles.r}
-                  fill={styles.fill}
-                  stroke={styles.stroke}
-                  strokeWidth={styles.strokeWidth}
-                  opacity={styles.opacity}
-                  
-                  style={{
-                    transition: "all .1s ease-in-out",
-                  }}
-                />
-              );
-            })}
 
             <Brush
               xScale={x}
@@ -316,7 +370,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             />
           </Group>
         </svg>
-        {tooltipOpen &&
+        {/* FIXME: This is expensive calculation */}
+        {/* {tooltipOpen &&
           tooltipData &&
           tooltipLeft != null &&
           tooltipTop != null && (
@@ -331,7 +386,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
                 <strong>Worry</strong> {tooltipData[yVariable]}
               </div>
             </Tooltip>
-          )}
+          )} */}
       </>
     );
   }
