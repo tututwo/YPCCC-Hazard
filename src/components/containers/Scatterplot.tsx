@@ -50,6 +50,7 @@ gsap.registerPlugin(useGSAP);
 function drawPoints(
   canvas,
   dataset,
+  selectedCounties,
   xVariable,
   yVariable,
   colorVariable,
@@ -61,8 +62,11 @@ function drawPoints(
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   dataset.forEach((d) => {
+    const isHighlighted = d.isBrushed || selectedCounties.includes(d.geoid);
+
     // NOTE: Larger circle
-    if (d.isBrushed) {
+    if (isHighlighted) {
+
       ctx.beginPath();
       // circle merge?
       ctx.arc(
@@ -81,7 +85,7 @@ function drawPoints(
     // NOTE: Smaller circle
 
     // ctx.globalCompositeOperation = "screen";
-    ctx.globalAlpha = 0.5;
+    ctx.globalAlpha = isHighlighted ? 1 : 0.5;
     ctx.beginPath();
     ctx.arc(
       xScale(d[xVariable]),
@@ -178,12 +182,20 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       return result;
     }, [coloredData, hoveredPointId]);
 
+    // const coloredAndRaisedData = useMemo(() => {
+    //   return coloredData.map(d => ({
+    //     ...d,
+    //     isBrushed: selectedCounties.includes(d.geoid)
+    //   }));
+    // }, [coloredData, selectedCounties]);
+    
     const { contextSafe } = useGSAP(
       () => {
         gsap.ticker.add(() =>
           drawPoints(
             canvasRef.current,
             coloredAndRaisedData,
+            selectedCounties,
             xVariable,
             yVariable,
             colorVariable,
@@ -195,6 +207,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       },
       { dependencies: [coloredAndRaisedData, width, height] }
     );
+    
     // // // // // // // // // // // // // // // // // //
     // // // // // // // // Tooltip // // // // // // // //
     // // // // // // // // // // // // // // // // // //

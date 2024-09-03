@@ -13,21 +13,12 @@ const redColors = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"];
 const grayColors = ["#12375A", "#4E6C8A", "#7590AB", "#A7BDD3", "#D2E4F6"];
 
 const createColorScale = () => {
-  const positiveThreshold = scaleThreshold()
-    .domain([0.2, 0.4, 0.6, 0.8, 1])
-    .range(redColors);
+  const domain = [-0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1];
+  const range = [...grayColors.slice().reverse(), ...redColors];
 
-  const negativeThreshold = scaleThreshold()
-    .domain([-0.8, -0.6, -0.4, -0.2, 0])
-    .range(grayColors.slice().reverse());
-
-  return (value: number) => {
-    if (value >= 0) {
-      return positiveThreshold(value);
-    } else {
-      return negativeThreshold(value);
-    }
-  };
+  return scaleThreshold()
+    .domain(domain)
+    .range(range);
 };
 
 const USStates = [

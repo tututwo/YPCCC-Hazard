@@ -110,6 +110,7 @@ export default function Home() {
       loadedData.forEach((d) => {
         d[xVariable] = +d[xVariable];
         d[yVariable] = +d[yVariable];
+        d[colorVariable] = +d[colorVariable];
         d.radius = 3;
         d.isBrushed = false;
       });

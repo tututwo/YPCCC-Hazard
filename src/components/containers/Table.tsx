@@ -135,14 +135,13 @@ export default function DataTableDemo({
   });
 
   useEffect(() => {
-    const newPinning: RowPinningState = {
-      top: table
-        .getCenterRows()
-        .filter((row) => debouncedSelectedCounties.includes(row.original.geoid))
-        .map((row) => row.id),
-    };
-
-    setRowPinning(newPinning);
+    table.setRowPinning((prev) => {
+      const newTop = table
+        .getRowModel()
+        .rows.filter((row) => debouncedSelectedCounties.includes(row.original.geoid))
+        .map((row) => row.id);
+      return { ...prev, top: newTop };
+    });
   }, [debouncedSelectedCounties, table]);
 
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
@@ -154,8 +153,9 @@ export default function DataTableDemo({
 
   // Update the virtualizer to use the filtered rows count
   const allRows = [...table.getTopRows(), ...table.getCenterRows()];
+
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: allRows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
     // overscan: 20, // 20 rows to render before and after the visible area
@@ -189,12 +189,19 @@ export default function DataTableDemo({
                   >
                     {header.isPlaceholder ? null : (
                       <div
-                        className={`${
+                        className={`w-full  ${
                           header.column.getCanSort()
                             ? "cursor-pointer select-none"
                             : ""
                         }`}
                         onClick={header.column.getToggleSortingHandler()}
+                        style={{
+                          textAlign: !["County_name", "state"].includes(
+                            header.column.id
+                          )
+                            ? "right"
+                            : "left",
+                        }}
                       >
                         {flexRender(
                           header.column.columnDef.header,
@@ -208,7 +215,7 @@ export default function DataTableDemo({
             ))}
           </TableHeader>
           <TableBody
-            className="flex flex-col relative"
+            className="relative"
             style={{
               height: `${virtualizer.getTotalSize()}px`,
             }}
@@ -222,22 +229,31 @@ export default function DataTableDemo({
                   key={row.id}
                   data-index={virtualRow.index}
                   ref={(node) => virtualizer.measureElement(node)}
-                  className="flex absolute w-full z-30 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
+                  className={`flex absolute w-full z-30 transition-colors duration-200 hover:bg-[#D2E4F6] cursor-pointer even:bg-gray-100 ${
+                    isPinned
+                      ? "text-white border-l-4 border-l-[#12375A]"
+                      : "border-b-4 border-[white]"
+                  }`}
                   style={{
-                    backgroundColor: isPinned ? "lightblue" : "transparent",
-                    //  add this, table.getTopRows().length * 35 +, to translateY is like add scrollMargin
+                    backgroundColor: isPinned ? "#727272" : "none",
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                   onClick={() => {
-                    const isCurrentlyPinned =
-                      debouncedSelectedCounties.includes(row.id);
-
+                    const isCurrentlyPinned = row.getIsPinned() === 'top';
                     const newSelectedCounties = isCurrentlyPinned
-                      ? debouncedSelectedCounties.filter((id) => id !== row.id)
-                      : [...debouncedSelectedCounties, row.original];
-
-                    // updateSelectedCounties(newSelectedCounties[0].geoid);
-                    row.pin("top");
+                      ? debouncedSelectedCounties.filter(id => id !== row.original.geoid)
+                      : [...debouncedSelectedCounties, row.original.geoid];
+                  
+                    updateSelectedCounties(newSelectedCounties);
+                  
+                    // Use the table's API to update pinning
+                    table.setRowPinning((prev) => {
+                      if (isCurrentlyPinned) {
+                        return { ...prev, top: prev.top.filter(id => id !== row.id) };
+                      } else {
+                        return { ...prev, top: [...(prev.top || []), row.id] };
+                      }
+                    });
                   }}
                   // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
                   // onMouseLeave={() => setHoveredRowIndex(null)}
@@ -248,6 +264,7 @@ export default function DataTableDemo({
                       className="flex py-1 pl-0 truncate z-10 pointer-events-none w-full"
                       style={{
                         width: cell.column.getSize() + "px",
+                        paddingRight: cell.column.id === "gap" ? "10px" : "5px",
                         backgroundColor: (() => {
                           if (cell.column.id === colorVariable) {
                             const { h, s, l, opacity } = d3.hsl(
@@ -263,19 +280,25 @@ export default function DataTableDemo({
                           //   return "#F0F0F0";
                           // }
                           else {
-                            return "transparent";
+                            return "none";
                           }
                         })(),
                       }}
                     >
                       <div
-                        className="truncate text-xs text-right"
+                        className="w-full truncate text-xs font-medium "
                         style={{
+                          textAlign: !["County_name", "state"].includes(
+                            cell.column.id
+                          )
+                            ? "right"
+                            : "left",
+                          // NOTE: whiten text if gap is > 0.9
                           color:
                             cell.column.id === colorVariable &&
-                            cell.getValue() > 0.9
+                            cell.getValue() > 0.5
                               ? "white"
-                              : "black",
+                              : "inherit",
                         }}
                       >
                         {flexRender(
