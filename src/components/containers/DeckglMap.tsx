@@ -231,7 +231,7 @@ const DeckglMap = ({
             <p>{hoverInfo.object.properties[colorVariable]}</p>
           </div>
         )}
-        <Map reuseMaps mapStyle={CARTO_BASEMAP} />
+        {/* <Map reuseMaps mapStyle={CARTO_BASEMAP} /> */}
       </DeckGL>
     </map>
   );

@@ -211,10 +211,10 @@ const USStates = [
     id: 1,
     name: "Alabama",
   },
-  {
-    id: 2,
-    name: "Alaska",
-  },
+  // {
+  //   id: 2,
+  //   name: "Alaska",
+  // },
   {
     id: 4,
     name: "Arizona",

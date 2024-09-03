@@ -110,6 +110,8 @@ export default function Home() {
       loadedData.forEach((d) => {
         d[xVariable] = +d[xVariable];
         d[yVariable] = +d[yVariable];
+        d.radius = 3;
+        d.isBrushed = false;
       });
       setData(loadedData);
     });
@@ -138,11 +140,11 @@ export default function Home() {
       <header className="w-full bg-[#D2E4F6] mb-4">
         <HeatGapHeader />
       </header>
-      <main className="flex-grow h-screen flex flex-col desktop:flex-nowrap w-full  relative px-6  ">
+      <main className="flex-grow h-screen flex flex-col desktop:flex-nowrap w-full  relative pr-10 pl-6 ">
         {/* IMPORTANT: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
         {/* NOTE:Map Section */}
         <section
-          className="w-full min-h-[700px] desktop:flex-grow desktop:flex-shrink   pb-6 flex flex-row gap-10"
+          className="w-full min-h-[700px] desktop:flex-grow desktop:flex-shrink   pb-6 flex flex-row gap-4"
           onMouseEnter={handleMouseLeave}
         >
           {/* NOTE:Actual Map */}

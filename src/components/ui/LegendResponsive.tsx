@@ -9,13 +9,13 @@ const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
       </div>
       <div className="flex-grow flex gap-2">
         {/* GAP text */}
-        <div className="flex flex-col justify-between text-xs text-gray-500 relative">
+        <div className="flex flex-col justify-between text-base text-gray-500 relative font-bold">
           <div className="flex items-center flex-col">
-            <span className="inline-block text-right">Bigger gap</span>
+            <span className="inline-block text-right" style={{color: colors[0].color}}>Bigger gap</span>
           </div>
           <div className="w-8 h-px bg-gray-900  text-right"></div>
           <div className="flex items-center  flex-col text-right">
-            <span className="inline-block">Smaller gap</span>
+            <span className="inline-block" style={{color: colors[colors.length - 1].color}}>Smaller gap</span>
           </div>
         </div>
         {/* Color Bars */}

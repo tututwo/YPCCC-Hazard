@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 import React, {
   useRef,
@@ -10,16 +9,15 @@ import React, {
 // NOTE: D3
 import * as d3 from "d3";
 import { Delaunay } from "d3-delaunay";
-import { scaleThreshold } from "d3-scale";
 
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-// import { useMapContext } from "@/lib/context";
+
 import { useMapStore } from "@/lib/store";
 // NOTE: VISX
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
-import { Circle, Line } from "@visx/shape";
+
 import { withTooltip, Tooltip } from "@visx/tooltip";
 import { WithTooltipProvidedProps } from "@visx/tooltip/lib/enhancers/withTooltip";
 import { voronoi, VoronoiPolygon } from "@visx/voronoi";
@@ -27,12 +25,16 @@ import { localPoint } from "@visx/event";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
 import Brush from "./brush-components/Brush";
-import { BrushHandleRenderProps } from "@visx/brush/lib/types";
-import BaseBrush from "@visx/brush/lib/BaseBrush";
 
 // Add these constants for your color scales
-const redColors = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"];
-const grayColors = ["#12375A", "#4E6C8A", "#7590AB", "#A7BDD3", "#D2E4F6"];
+
+const tickLabelProps = {
+  fill: "#222",
+  fontFamily: "Roboto",
+  fontSize: 14,
+  textAnchor: "middle",
+  fillOpacity: 0.5,
+};
 let tooltipTimeout: number;
 
 function raise<T>(items: T[], raiseIndex: number) {
@@ -43,9 +45,8 @@ function raise<T>(items: T[], raiseIndex: number) {
   return array;
 }
 
-const maxDistance = 1;
-const margin = { top: 0, right: 60, bottom: 50, left: 50 };
-
+const margin = { top: 10, right: 80, bottom: 50, left: 60 };
+gsap.registerPlugin(useGSAP);
 function drawPoints(
   canvas,
   dataset,
@@ -60,18 +61,43 @@ function drawPoints(
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   dataset.forEach((d) => {
-    // ctx.globalCompositeOperation = "multiply";
+    // NOTE: Larger circle
+    if (d.isBrushed) {
+      ctx.beginPath();
+      // circle merge?
+      ctx.arc(
+        xScale(d[xVariable]),
+        yScale(d[yVariable]),
+        d.radius * 1.4,
+        0,
+        2 * Math.PI
+      );
+      ctx.fillStyle = "white";
+      ctx.fill();
+      ctx.strokeStyle = colorScale(d[colorVariable]);
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // NOTE: Smaller circle
+
+    // ctx.globalCompositeOperation = "screen";
     ctx.globalAlpha = 0.5;
     ctx.beginPath();
     ctx.arc(
       xScale(d[xVariable]),
       yScale(d[yVariable]),
-      d.radius ?? 3,
+      d.radius,
       0,
       2 * Math.PI
     );
     ctx.fillStyle = colorScale(d[colorVariable]);
     ctx.fill();
+    // FIXME: This produce a merging effect
+    // ctx.fillStyle = "white";
+    // ctx.fill();
+    // ctx.strokeStyle = "black";
+    // ctx.lineWidth = 2;
+    // ctx.stroke();
   });
 }
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
@@ -112,23 +138,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       selectedCounties,
       updateSelectedCounties,
     } = useMapStore();
-
-    // FIXME: This is really slow. Improve it
-    // const circleStyles = useMemo(() => {
-    //   return (point: PointsRange) => {
-    //     const isBrushed =
-    //       selectedState.id === 0 && brushedCircles.has(point.geoid);
-    //     const isSelected = selectedCounties.includes(point.geoid);
-    //     const isHovered = false;
-    //     return {
-    //       r: isSelected ? 6 : isHovered ? 5 : 3,
-    //       fill: point.color,
-    //       stroke: isSelected ? "black" : isHovered ? "black" : "none",
-    //       strokeWidth: isSelected ? 2 : isHovered ? 1 : 0,
-    //       opacity: isBrushed || isSelected ? 1 : 0.5,
-    //     };
-    //   };
-    // }, [brushedCircles, hoveredPointId, selectedCounties, selectedState]);
 
     // NOTE: Scales
     const x = useMemo(
@@ -171,7 +180,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
     const { contextSafe } = useGSAP(
       () => {
-        console.log("rendered");
         gsap.ticker.add(() =>
           drawPoints(
             canvasRef.current,
@@ -185,7 +193,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           )
         );
       },
-      { dependencies: [coloredAndRaisedData, width] }
+      { dependencies: [coloredAndRaisedData, width, height] }
     );
     // // // // // // // // // // // // // // // // // //
     // // // // // // // // Tooltip // // // // // // // //
@@ -282,26 +290,26 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           .map((point) => point.geoid)
       );
       // animation
-      coloredAndRaisedData.forEach(d => {
+      coloredAndRaisedData.forEach((d) => {
         const isBrushed =
           d[xVariable] >= x0 &&
           d[xVariable] <= x1 &&
           d[yVariable] >= y0 &&
           d[yVariable] <= y1;
-    
+        d.isBrushed = isBrushed;
         if (isBrushed) {
           selectedPointsSet.add(d.geoid);
         }
-    
+
         gsap.to(d, {
           radius: isBrushed ? 6 : 3,
           duration: 0.1,
-          ease: "power2.inOut"
+          ease: "power2.inOut",
         });
       });
       setCurrentBrushSelection(selectedPointsSet);
       setBrushedCircles(currentBrushSelection);
-      
+
       updateSelectedCounties(Array.from(currentBrushSelection));
     });
     const selectedBoxStyle = useMemo(
@@ -318,27 +326,34 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       <>
         <canvas
           ref={canvasRef}
-          width={innerWidth}
-          height={innerHeight}
-          className="absolute z-0"
+          width={width - margin.left}
+          height={height - margin.top}
+          className="absolute z-10"
           style={{ top: margin.top + "px", left: margin.left + "px" }}
         ></canvas>
         <svg
-          ref={svgRef}
           width={width}
-          className="absolute z-10 h-full"
+          className="absolute  h-full"
           style={{
             maxHeight: height,
-            cursor: isBrushing ? "crosshair" : "pointer",
           }}
         >
           <Group left={margin.left} top={margin.top}>
-            <GridRows scale={y} width={xMax} height={yMax} stroke="#F3F3F3" />
+            <GridRows
+              scale={y}
+              width={xMax}
+              height={yMax}
+              stroke="#F2F2F2"
+              strokeWidth={1.5}
+              className="z-0"
+            />
             <GridColumns
               scale={x}
               width={xMax}
               height={yMax}
-              stroke="#F3F3F3"
+              stroke="#F2F2F2"
+              strokeWidth={1.5}
+              className="z-0"
             />
 
             <AxisBottom
@@ -348,9 +363,31 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
               hideTicks
               hideZero
               hideAxisLine
+              label="Rating"
+              labelClassName="text-base font-bold text-gray-500 "
+              tickLabelProps={tickLabelProps}
             />
-            <AxisLeft scale={y} hideTicks hideZero hideAxisLine />
-
+            <AxisLeft
+              scale={y}
+              hideTicks
+              hideZero
+              hideAxisLine
+              label="Worry"
+              labelClassName="text-base font-bold text-gray-500"
+              tickLabelProps={tickLabelProps}
+            />
+          </Group>
+        </svg>
+        <svg
+          ref={svgRef}
+          width={width}
+          className="absolute  h-full z-50"
+          style={{
+            maxHeight: height,
+            cursor: isBrushing ? "crosshair" : "pointer",
+          }}
+        >
+          <Group left={margin.left} top={margin.top}>
             <Brush
               xScale={x}
               yScale={y}
@@ -372,22 +409,23 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           </Group>
         </svg>
         {/* FIXME: This is expensive calculation */}
-        {/* {tooltipOpen &&
+        {tooltipOpen &&
           tooltipData &&
           tooltipLeft != null &&
           tooltipTop != null && (
             <Tooltip
               left={tooltipLeft + margin.left}
               top={tooltipTop + margin.top}
+              className="z-[1000]"
             >
-              <div>
+              <div className="z-[1000]">
                 <strong>Rating:</strong> {tooltipData[xVariable]}
               </div>
               <div>
                 <strong>Worry</strong> {tooltipData[yVariable]}
               </div>
             </Tooltip>
-          )} */}
+          )}
       </>
     );
   }
