@@ -37,6 +37,7 @@ import TableTailwind from "./TableTailwindCSS";
 import { useMapStore } from "@/lib/store";
 
 import * as d3 from "d3";
+import { useDebounce } from "use-debounce";
 
 const formatDecimal = d3.format(".1f");
 
@@ -111,7 +112,9 @@ export default function DataTableDemo({
 
   const { colorScale, selectedCounties, updateSelectedCounties } =
     useMapStore();
-
+  const [debouncedSelectedCounties] = useDebounce(selectedCounties, 300, {
+    maxWait: 1000,
+  });
   const table = useReactTable({
     data,
     columns,
@@ -128,19 +131,19 @@ export default function DataTableDemo({
     onGlobalFilterChange: setFilterValue,
     onRowPinningChange: setRowPinning,
     enableRowPinning: true,
-    keepPinnedRows: false,
+    keepPinnedRows: true,
   });
 
   useEffect(() => {
     const newPinning: RowPinningState = {
       top: table
         .getCenterRows()
-        .filter((row) => selectedCounties.includes(row.original.geoid))
+        .filter((row) => debouncedSelectedCounties.includes(row.original.geoid))
         .map((row) => row.id),
     };
 
     setRowPinning(newPinning);
-  }, [selectedCounties, table]);
+  }, [debouncedSelectedCounties, table]);
 
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
@@ -150,13 +153,14 @@ export default function DataTableDemo({
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Update the virtualizer to use the filtered rows count
+  const allRows = [...table.getTopRows(), ...table.getCenterRows()];
   const virtualizer = useVirtualizer({
-    count: table.getCenterRows().length,
+    count: rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
     // overscan: 20, // 20 rows to render before and after the visible area
-    initialOffset: 0, // start at the top of the table
-    scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
+    // initialOffset: 0, // start at the top of the table
+    // scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
 
   return (
@@ -206,85 +210,12 @@ export default function DataTableDemo({
           <TableBody
             className="flex flex-col relative"
             style={{
-              height: `${
-                virtualizer.getTotalSize() + table.getTopRows().length * 35
-              }px`,
+              height: `${virtualizer.getTotalSize()}px`,
             }}
           >
-            {table.getTopRows().map((row, rowIndex) => (
-              <TableRow
-                data-index={rowIndex}
-                onClick={() => {
-                  // const isCurrentlyPinned = selectedCounties.includes(row.id);
-
-                  // const newSelectedCounties = isCurrentlyPinned
-                  //   ? selectedCounties.filter((id) => id !== row.id)
-                  //   : [...selectedCounties, row.original];
-                  // updateSelectedCounties(newSelectedCounties[0].geoid);
-                  row.pin("top");
-                }}
-                key={row.id}
-                ref={(node) => virtualizer.measureElement(node)}
-                className="flex  bg-white w-full z-40 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
-                style={{
-                  top: `${rowIndex * 35 + 50}px`, // because header is 50px
-                  height: "35px",
-                  borderBottom:
-                    rowIndex === table.getTopRows().length - 1
-                      ? "2px solid #E0E0E0"
-                      : "none",
-                }}
-
-                // onMouseEnter={() => setHoveredRowIndex(virtualRow.index)}
-                // onMouseLeave={() => setHoveredRowIndex(null)}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className="flex py-1 pl-0 truncate z-10 pointer-events-none w-full"
-                    style={{
-                      width: cell.column.getSize() + "px",
-                      backgroundColor: (() => {
-                        if (cell.column.id === colorVariable) {
-                          const { h, s, l, opacity } = d3.hsl(
-                            colorScale(cell.getValue())
-                          );
-                          // Adjust the lightness (l) value as needed
-                          // You can change this value to adjust the lightness
-                          return d3
-                            .hsl(h, s * 1, 0.61, opacity * 0.8)
-                            .toString();
-                        } else if (rowIndex % 2 === 1) {
-                          return "#F0F0F0";
-                        } else {
-                          return "transparent";
-                        }
-                      })(),
-                    }}
-                  >
-                    <div
-                      className="truncate text-xs text-right"
-                      style={{
-                        color:
-                          cell.column.id === colorVariable &&
-                          cell.getValue() > 0.9
-                            ? "white"
-                            : "black",
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </div>
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-
             {virtualizer.getVirtualItems().map((virtualRow, rowIndex) => {
-              const row = table.getCenterRows()[virtualRow.index];
-              if (!row) return null;
+              const row = allRows[virtualRow.index];
+              const isPinned = row.getIsPinned();
 
               return (
                 <TableRow
@@ -293,16 +224,18 @@ export default function DataTableDemo({
                   ref={(node) => virtualizer.measureElement(node)}
                   className="flex absolute w-full z-30 transition-colors duration-200 hover:bg-gray-300 cursor-pointer  py-0.5"
                   style={{
+                    backgroundColor: isPinned ? "lightblue" : "transparent",
                     //  add this, table.getTopRows().length * 35 +, to translateY is like add scrollMargin
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                   onClick={() => {
-                    const isCurrentlyPinned = selectedCounties.includes(row.id);
+                    const isCurrentlyPinned =
+                      debouncedSelectedCounties.includes(row.id);
 
                     const newSelectedCounties = isCurrentlyPinned
-                      ? selectedCounties.filter((id) => id !== row.id)
-                      : [...selectedCounties, row.original];
-                    console.log(newSelectedCounties[0].geoid);
+                      ? debouncedSelectedCounties.filter((id) => id !== row.id)
+                      : [...debouncedSelectedCounties, row.original];
+
                     // updateSelectedCounties(newSelectedCounties[0].geoid);
                     row.pin("top");
                   }}
@@ -325,9 +258,11 @@ export default function DataTableDemo({
                             return d3
                               .hsl(h, s * 1, 0.61, opacity * 0.8)
                               .toString();
-                          } else if (rowIndex % 2 === 1) {
-                            return "#F0F0F0";
-                          } else {
+                          }
+                          //  else if (rowIndex % 2 === 1) {
+                          //   return "#F0F0F0";
+                          // }
+                          else {
                             return "transparent";
                           }
                         })(),

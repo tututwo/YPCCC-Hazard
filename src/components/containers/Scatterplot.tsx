@@ -185,7 +185,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           )
         );
       },
-      { dependencies: [coloredAndRaisedData] }
+      { dependencies: [coloredAndRaisedData, width] }
     );
     // // // // // // // // // // // // // // // // // //
     // // // // // // // // Tooltip // // // // // // // //
@@ -301,6 +301,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       });
       setCurrentBrushSelection(selectedPointsSet);
       setBrushedCircles(currentBrushSelection);
+      
       updateSelectedCounties(Array.from(currentBrushSelection));
     });
     const selectedBoxStyle = useMemo(
