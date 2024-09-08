@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import React, {
   useRef,
@@ -66,7 +67,6 @@ function drawPoints(
 
     // NOTE: Larger circle
     if (isHighlighted) {
-
       ctx.beginPath();
       // circle merge?
       ctx.arc(
@@ -85,7 +85,7 @@ function drawPoints(
     // NOTE: Smaller circle
 
     // ctx.globalCompositeOperation = "screen";
-    ctx.globalAlpha = isHighlighted ? 1 : 0.5;
+    ctx.globalAlpha = isHighlighted ? 1 : 0.8;
     ctx.beginPath();
     ctx.arc(
       xScale(d[xVariable]),
@@ -179,6 +179,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           result = raise(result, index);
         }
       }
+
       return result;
     }, [coloredData, hoveredPointId]);
 
@@ -188,10 +189,10 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     //     isBrushed: selectedCounties.includes(d.geoid)
     //   }));
     // }, [coloredData, selectedCounties]);
-    
+
     const { contextSafe } = useGSAP(
       () => {
-        gsap.ticker.add(() =>
+        const drawCanvas = () => {
           drawPoints(
             canvasRef.current,
             coloredAndRaisedData,
@@ -202,12 +203,16 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             x,
             y,
             colorScale
-          )
-        );
+          );
+        };
+        gsap.ticker.add(drawCanvas);
+        return () => {
+          gsap.ticker.remove(drawCanvas);
+        };
       },
       { dependencies: [coloredAndRaisedData, width, height] }
     );
-    
+
     // // // // // // // // // // // // // // // // // //
     // // // // // // // // Tooltip // // // // // // // //
     // // // // // // // // // // // // // // // // // //
@@ -328,7 +333,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const selectedBoxStyle = useMemo(
       () => ({
         fill: "steelblue",
-        fillOpacity: selectedState.id === 0 ? 0.2 : 0,
+        fillOpacity: selectedState.id === 0 ? 0.08 : 0,
         stroke: "steelblue",
         strokeWidth: 1,
         strokeOpacity: selectedState.id === 0 ? 0.8 : 0,

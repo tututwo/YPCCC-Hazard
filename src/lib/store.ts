@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { scaleThreshold } from "d3-scale";
+import { create } from "zustand";
+import { scaleQuantize } from "d3-scale";
 
 interface MapState {
   selectedState: { id: number; name: string };
@@ -9,16 +9,22 @@ interface MapState {
   updateSelectedCounties: (counties: string[]) => void;
 }
 
-const redColors = ["#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5"];
-const grayColors = ["#12375A", "#4E6C8A", "#7590AB", "#A7BDD3", "#D2E4F6"];
-
 const createColorScale = () => {
-  const domain = [-0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1];
-  const range = [...grayColors.slice().reverse(), ...redColors];
+  const domain = [-1, 1]; // Min and max of your domain
+  const range = [
+    "#11375A",
+    "#4E6C8A",
+    "#7590AB",
+    "#A7BDD3",
+    "#D2E4F6",
+    "#FBCFDA",
+    "#E69FB0",
+    "#D6798F",
+    "#C6536F",
+    "#AE1C3E",
+  ];
 
-  return scaleThreshold()
-    .domain(domain)
-    .range(range);
+  return scaleQuantize().domain(domain).range(range);
 };
 
 const USStates = [
@@ -38,10 +44,10 @@ const USStates = [
     id: 13,
     name: "Georgia",
   },
-  {
-    id: 15,
-    name: "Hawaii",
-  },
+  // {
+  //   id: 15,
+  //   name: "Hawaii",
+  // },
   {
     id: 16,
     name: "Idaho",
@@ -231,12 +237,12 @@ const USStates = [
     name: "US",
   },
 ];
-USStates.sort((a, b) => a.name.localeCompare(b.name))
+USStates.sort((a, b) => a.name.localeCompare(b.name));
 export const useMapStore = create<MapState>((set) => ({
   selectedState: { id: 0, name: "US" },
   selectedCounties: [],
   colorScale: createColorScale(),
   setSelectedState: (state) => set({ selectedState: state }),
   updateSelectedCounties: (counties) => set({ selectedCounties: counties }),
-  USStates: USStates
+  USStates: USStates,
 }));

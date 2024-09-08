@@ -67,16 +67,16 @@ const categories = [
   { name: "Drought", subcategories: ["Subcategory 1", "Subcategory 2"] },
 ];
 const colors = [
-  { value: 1.0, color: "#b91c1c" },
-  { value: 0.8, color: "#dc2626" },
-  { value: 0.6, color: "#ef4444" },
-  { value: 0.4, color: "#f87171" },
-  { value: 0.2, color: "#fca5a5" },
-  { value: 0.0, color: "#fecaca" },
-  { value: -0.2, color: "#9ca3af" },
-  { value: -0.4, color: "#6b7280" },
-  { value: -0.6, color: "#4b5563" },
-  { value: -0.8, color: "#374151" },
+  { value: 1.0, color: "#AE1C3E" },
+  { value: 0.8, color: "#C6536F" },
+  { value: 0.6, color: "#D6798F" },
+  { value: 0.4, color: "#E69FB0" },
+  { value: 0.2, color: "#FBCFDA" },
+  { value: 0.0, color: "#D2E4F6" },
+  { value: -0.2, color: "#A7BDD3" },
+  { value: -0.4, color: "#7590AB" },
+  { value: -0.6, color: "#4E6C8A" },
+  { value: -0.8, color: "#11375A" },
   { value: -1.0, color: "none" },
 ];
 gsap.registerPlugin(useGSAP);

@@ -36,6 +36,7 @@ const tooltipStyle: React.CSSProperties = {
   borderRadius: "5px",
   boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
 };
+const defaultOpacity = 235;
 const DeckglMap = ({
   width = 975,
   height = 610,
@@ -151,12 +152,13 @@ const DeckglMap = ({
             const { r, g, b } = d3.color(
               colorScale(d.properties[colorVariable])
             );
+            
             const a =
               selectedCounties.length == 0
-                ? 255
+                ? defaultOpacity
                 : selectedCounties.includes(d.properties.GEOID)
-                ? 255
-                : 100;
+                ? defaultOpacity
+                : 69;
             return [r, g, b, a];
           },
           pickable: true,
@@ -177,17 +179,30 @@ const DeckglMap = ({
         }),
 
         new GeoJsonLayer({
-          id: "state-border-layer",
+          id: "state-border-layer-white",
+          data: stateData,
+          // visible: selectedState.name === "US" ? true : false,
+          filled: false,
+          stroked: true,
+          getLineColor: [255, 255, 255, 200],
+          getLineWidth:4,
+          lineWidthUnits: "pixels",
+          lineWidthScale: 1,
+          // lineWidthMinPixels: 1,
+          // lineWidthMaxPixels: 2,
+        }),
+        new GeoJsonLayer({
+          id: "state-border-layer-black",
           data: stateData,
           visible: selectedState.name === "US" ? true : false,
           filled: false,
           stroked: true,
-          getLineColor: [255, 255, 255, 200],
-          getLineWidth: 2,
+          getLineColor: [0, 0, 0, 200],
+          getLineWidth: .5,
           lineWidthUnits: "pixels",
           lineWidthScale: 1,
-          lineWidthMinPixels: 1,
-          lineWidthMaxPixels: 2,
+          // lineWidthMinPixels: 1,
+          // lineWidthMaxPixels: 2,
         }),
       ].filter(Boolean),
     [geographyData, selectedState, colorScale, alphaValues, selectedCounties]

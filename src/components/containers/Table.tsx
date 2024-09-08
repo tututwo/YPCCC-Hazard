@@ -158,7 +158,7 @@ export default function DataTableDemo({
     count: allRows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
-    // overscan: 20, // 20 rows to render before and after the visible area
+    overscan: 1, // 20 rows to render before and after the visible area
     // initialOffset: 0, // start at the top of the table
     // scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
@@ -296,7 +296,7 @@ export default function DataTableDemo({
                           // NOTE: whiten text if gap is > 0.9
                           color:
                             cell.column.id === colorVariable &&
-                            cell.getValue() > 0.5
+                            cell.getValue() > 0.5 ||cell.getValue() < -0.5
                               ? "white"
                               : "inherit",
                         }}

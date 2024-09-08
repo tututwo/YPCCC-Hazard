@@ -20,7 +20,7 @@ const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
         </div>
         {/* Color Bars */}
         {/* IMPORTANT: gap-2 to control the gap between color bars */}
-        <div className=" flex flex-col items-start mr-1 gap-2">
+        <div className=" flex flex-col items-start mr-1 gap-4">
           {colors.slice(0, 10).map((color, index) => (
             <div key={index} className="h-[10%] flex items-start  gap-2">
               {/* IMPORTANT: aspect-square h-full makes the color bar square */}
