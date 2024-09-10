@@ -10,6 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import {
+  FireIcon,
+  LifebuoyIcon,
+  Bars2Icon,
+  CloudIcon,
+  SunIcon,
+} from "@heroicons/react/24/outline";
 export default function ExpandableSection({
   isExpanded,
   isDesktop,
@@ -56,7 +64,7 @@ export default function ExpandableSection({
       >
         <div id="sidebar-background"></div>
 
-        <div className="w-full">
+        <div className="w-full z-[1000] text-black">
           <Select>
             <SelectTrigger>
               <SelectValue placeholder="US" />
@@ -90,7 +98,25 @@ export default function ExpandableSection({
                         i === 0 ? "border-t-0" : "border-t-[1px]"
                       }  border-[#3C5A77] w-full py-1 px-2 text-left font-thin flex justify-between items-center text-sm`}
                     >
+                      {(() => {
+                        switch (category.name.toLowerCase()) {
+                          case "fire":
+                            return <FireIcon className="size-6" />;
+                          case "storm":
+                            return <CloudIcon className="size-6" />;
+                          case "flood":
+                            return (
+                              <LifebuoyIcon className="size-6" />
+                            );
+                          case "drought":
+                            return <SunIcon className="size-6" />;
+                          default:
+                            return <Bars2Icon className="size-6" />;
+                        }
+                      })()}
+
                       <h3>{category.name}</h3>
+
                       <svg
                         className={`size-4 transition-transform duration-300 ${
                           expandedCategory === category.name ? "rotate-180" : ""
@@ -144,7 +170,11 @@ export default function ExpandableSection({
                   </div>
                 ))}
               </section>
-              <footer className="mt-auto">2024</footer>
+              <footer className="mt-auto mb-4 font-thin text-xs flex flex-col gap-2">
+                <div className="underline">Data Sources</div>
+                <div className="cursor-help underline">About</div>
+                <div>Copyright 2024</div>
+              </footer>
             </div>
           </>
         )}

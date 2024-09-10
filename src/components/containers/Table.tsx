@@ -112,8 +112,8 @@ export default function DataTableDemo({
 
   const { colorScale, selectedCounties, updateSelectedCounties } =
     useMapStore();
-  const [debouncedSelectedCounties] = useDebounce(selectedCounties, 300, {
-    maxWait: 1000,
+  const [debouncedSelectedCounties] = useDebounce(selectedCounties, 1000, {
+    maxWait: 1500,
   });
   const table = useReactTable({
     data,
@@ -138,13 +138,15 @@ export default function DataTableDemo({
     table.setRowPinning((prev) => {
       const newTop = table
         .getRowModel()
-        .rows.filter((row) => debouncedSelectedCounties.includes(row.original.geoid))
+        .rows.filter((row) =>
+          debouncedSelectedCounties.includes(row.original.geoid)
+        )
         .map((row) => row.id);
       return { ...prev, top: newTop };
     });
   }, [debouncedSelectedCounties, table]);
 
-  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
+  // const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   const { rows } = table.getRowModel();
 
@@ -158,7 +160,7 @@ export default function DataTableDemo({
     count: allRows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
-    overscan: 1, // 20 rows to render before and after the visible area
+    overscan: 20, // 20 rows to render before and after the visible area
     // initialOffset: 0, // start at the top of the table
     // scrollMargin: table.getTopRows().length * 35 + 10, // Add this line
   });
@@ -239,17 +241,22 @@ export default function DataTableDemo({
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                   onClick={() => {
-                    const isCurrentlyPinned = row.getIsPinned() === 'top';
+                    const isCurrentlyPinned = row.getIsPinned() === "top";
                     const newSelectedCounties = isCurrentlyPinned
-                      ? debouncedSelectedCounties.filter(id => id !== row.original.geoid)
+                      ? debouncedSelectedCounties.filter(
+                          (id) => id !== row.original.geoid
+                        )
                       : [...debouncedSelectedCounties, row.original.geoid];
-                  
+
                     updateSelectedCounties(newSelectedCounties);
-                  
+
                     // Use the table's API to update pinning
                     table.setRowPinning((prev) => {
                       if (isCurrentlyPinned) {
-                        return { ...prev, top: prev.top.filter(id => id !== row.id) };
+                        return {
+                          ...prev,
+                          top: prev.top.filter((id) => id !== row.id),
+                        };
                       } else {
                         return { ...prev, top: [...(prev.top || []), row.id] };
                       }
@@ -295,8 +302,9 @@ export default function DataTableDemo({
                             : "left",
                           // NOTE: whiten text if gap is > 0.9
                           color:
-                            cell.column.id === colorVariable &&
-                            cell.getValue() > 0.5 ||cell.getValue() < -0.5
+                            (cell.column.id === colorVariable &&
+                              cell.getValue() > 0.5) ||
+                            cell.getValue() < -0.5
                               ? "white"
                               : "inherit",
                         }}

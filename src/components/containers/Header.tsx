@@ -25,7 +25,7 @@ export const HeatGapHeader = () => {
     };
   };
   return (
-    <div className=" mx-auto bg-blue-50 p-4">
+    <div className=" mx-auto bg-blue-50 py-2 px-6">
       <div className="flex items-center space-x-4">
         <h2 className="text-2xl font-bold text-blue-900">Heat gap</h2>
         <span className="text-gray-600">in</span>

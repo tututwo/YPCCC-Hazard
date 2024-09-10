@@ -1,7 +1,7 @@
 import React from "react";
 import { useMapStore } from "@/lib/store";
 const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
-  const { updateSelectedCounties, selectedCounties } = useMapStore();
+  const { updateSelectedCounties, setSelectedState } = useMapStore();
   return (
     <div className="flex flex-col justify-around w-full h-full">
       <div className="text-xs text-gray-600 mt-1 mb-4 self-center">
@@ -20,7 +20,7 @@ const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
         </div>
         {/* Color Bars */}
         {/* IMPORTANT: gap-2 to control the gap between color bars */}
-        <div className=" flex flex-col items-start mr-1 gap-4">
+        <div className=" flex flex-col items-start mr-1 gap-2">
           {colors.slice(0, 10).map((color, index) => (
             <div key={index} className="h-[10%] flex items-start  gap-2">
               {/* IMPORTANT: aspect-square h-full makes the color bar square */}
@@ -42,6 +42,7 @@ const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
                     .map((d) => d.geoid);
                 //   console.log(filteredDataID);
                   updateSelectedCounties(filteredDataID);
+                  // setSelectedState({id: 0, name: "US"})
                 }}
                 aria-label={`Select color for value ${color.value}`}
               />

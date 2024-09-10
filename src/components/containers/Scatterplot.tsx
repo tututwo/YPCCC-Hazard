@@ -19,7 +19,7 @@ import { useMapStore } from "@/lib/store";
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
 
-import { withTooltip, Tooltip } from "@visx/tooltip";
+import { withTooltip } from "@visx/tooltip";
 import { WithTooltipProvidedProps } from "@visx/tooltip/lib/enhancers/withTooltip";
 import { voronoi, VoronoiPolygon } from "@visx/voronoi";
 import { localPoint } from "@visx/event";
@@ -27,6 +27,8 @@ import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
 import Brush from "./brush-components/Brush";
 
+
+import Tooltip from "@/components/ui/tooltip";
 // Add these constants for your color scales
 
 const tickLabelProps = {
@@ -37,7 +39,7 @@ const tickLabelProps = {
   fillOpacity: 0.5,
 };
 let tooltipTimeout: number;
-
+const twoSigFigFormatter = d3.format(".2r");
 function raise<T>(items: T[], raiseIndex: number) {
   const array = [...items];
   const lastIndex = array.length - 1;
@@ -253,6 +255,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         );
 
         if (closest && !isBrushing) {
+          
           // setHoveredPointId(closest.data.geoid);
           showTooltip({
             tooltipLeft: x(closest.data[xVariable]) + margin.left,
@@ -332,9 +335,9 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     });
     const selectedBoxStyle = useMemo(
       () => ({
-        fill: "steelblue",
+        fill: "#A7BDD3",
         fillOpacity: selectedState.id === 0 ? 0.08 : 0,
-        stroke: "steelblue",
+        stroke: "#12375A",
         strokeWidth: 1,
         strokeOpacity: selectedState.id === 0 ? 0.8 : 0,
       }),
@@ -430,19 +433,28 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         {tooltipOpen &&
           tooltipData &&
           tooltipLeft != null &&
-          tooltipTop != null && (
+          tooltipTop != null && (            
             <Tooltip
               left={tooltipLeft + margin.left}
               top={tooltipTop + margin.top}
-              className="z-[1000]"
-            >
-              <div className="z-[1000]">
-                <strong>Rating:</strong> {tooltipData[xVariable]}
-              </div>
-              <div>
-                <strong>Worry</strong> {tooltipData[yVariable]}
-              </div>
-            </Tooltip>
+              county={tooltipData.County_name}
+              state={tooltipData.state}
+              gap={twoSigFigFormatter(tooltipData[colorVariable])}
+              worry={twoSigFigFormatter(tooltipData[yVariable])}
+              rating={twoSigFigFormatter(tooltipData[xVariable])}
+            />
+            // <Tooltip
+            //   left={tooltipLeft + margin.left}
+            //   top={tooltipTop + margin.top}
+            //   className="z-[1000]"
+            // >
+            //   <div className="z-[1000]">
+            //     <strong>Rating:</strong> {tooltipData[xVariable]}
+            //   </div>
+            //   <div>
+            //     <strong>Worry</strong> {tooltipData[yVariable]}
+            //   </div>
+            // </Tooltip>
           )}
       </>
     );

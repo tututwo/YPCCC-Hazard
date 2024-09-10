@@ -141,17 +141,17 @@ export default function Home() {
       <header className="w-full bg-[#D2E4F6] mb-4">
         <HeatGapHeader />
       </header>
-      <main className="flex-grow h-screen flex flex-col desktop:flex-nowrap w-full  relative pr-10 pl-6 ">
+      <main className="flex-grow desktop:h-[900px] flex flex-col desktop:flex-nowrap w-full  relative pr-10 pl-6 ">
         {/* IMPORTANT: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
         {/* NOTE:Map Section */}
         <section
-          className="w-full min-h-[700px] desktop:flex-grow desktop:flex-shrink   pb-6 flex flex-row gap-4"
+          className="w-full min-h-[400px] max-h-[600px]desktop:flex-grow desktop:flex-shrink flex flex-row gap-4"
           onMouseEnter={handleMouseLeave}
         >
           {/* NOTE:Actual Map */}
           <figure
             ref={parentRef}
-            className="flex-grow h-full relative z-10 overflow-hidden "
+            className="flex-grow h-full relative z-10 "
           >
             <DeckglMap
               width={width}
@@ -159,6 +159,8 @@ export default function Home() {
               zoomToWhichState={zoomToWhichState}
               geographyData={counties}
               colorVariable={colorVariable}
+              xVariable={xVariable}
+              yVariable={yVariable}
             />
           </figure>
 
@@ -182,13 +184,13 @@ export default function Home() {
 
         {/* Table + Plots Section */}
 
-        <section className=" desktop:min-h-[600px] w-full flex flex-row gap-10">
+        <section className=" desktop:min-h-[400px] w-full flex-grow flex flex-row gap-10">
           {/* NOTE: Scatterplot */}
-          <div className="mt-4 flex-grow" id="scatterplot-container">
+          <div className="mt-4 flex-grow flex flex-col" id="scatterplot-container">
             <h2 className="text-lg font-bold ml-8">
               Heat worry and Heat rating of all counties
             </h2>
-            <figure className="w-full h-full ">
+            <figure className="w-full flex-grow">
               <ParentSize>
                 {({ width, height, top, left }) => {
                   return (
@@ -226,7 +228,7 @@ export default function Home() {
               </ParentSize>
             </div>
 
-            <Button variant={"ghost"} className="w-full flex text-lg">
+            <Button variant={"ghost"} className="w-full flex text-sm py-0">
               <svg
                 width="15"
                 height="15"
