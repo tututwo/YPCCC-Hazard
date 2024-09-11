@@ -11,8 +11,14 @@ import { Map } from "react-map-gl/maplibre";
 // import { useMapContext } from "@/lib/context";
 import { useMapStore } from "@/lib/store";
 import DeckGL from "@deck.gl/react";
-import { MapViewState, FlyToInterpolator } from "@deck.gl/core";
-import { GeoJsonLayer } from "@deck.gl/layers";
+import {
+  MapViewState,
+  FlyToInterpolator,
+  LightingEffect,
+  AmbientLight,
+  _SunLight as SunLight,
+} from "@deck.gl/core";
+import { GeoJsonLayer, PolygonLayer } from "@deck.gl/layers";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
@@ -44,6 +50,20 @@ function easeOutExpo(x: number): number {
 }
 const twoSigFigFormatter = d3.format(".2r");
 
+const elevationScale = d3.scaleLinear().domain([-1, 1]).range([0, 2000]);
+
+const ambientLight = new AmbientLight({
+  color: [255, 255, 255],
+  intensity: 2.5,
+});
+
+const dirLight = new SunLight({
+  timestamp: Date.UTC(2019, 7, 1, 22),
+  color: [255, 255, 255],
+  intensity: 0.5,
+  // _shadow: true,
+});
+
 const DeckglMap = ({
   width = 975,
   height = 610,
@@ -63,7 +83,11 @@ const DeckglMap = ({
     selectedCounties,
     updateSelectedCounties,
   } = useMapStore();
-
+  const [effects] = useState(() => {
+    const lightingEffect = new LightingEffect({ ambientLight, dirLight });
+    lightingEffect.shadowColor = [0, 0, 0, 0];
+    return [lightingEffect];
+  });
   const [viewState, setViewState] = useState({
     longitude: -98.5795,
     latitude: 39.8283,
@@ -106,8 +130,8 @@ const DeckglMap = ({
       const newViewState = {
         ...zoomToWhichState[stateName],
         transitionInterpolator: new FlyToInterpolator({
-          speed: 0.4,
-          curve: 1.8,
+          speed: 0.8,
+          curve: 1,
         }),
         transitionDuration: "auto",
         transitionEasing: easeOutExpo,
@@ -120,10 +144,10 @@ const DeckglMap = ({
   useEffect(() => {
     if (selectedState.name === "US") {
       setViewState({
-        longitude: -98.,
-        latitude: 39., // 39.8283
+        longitude: -98,
+        latitude: 39, // 39.8283
         zoom: 3.1,
-        maxZoom: 4.2,
+        maxZoom: 6.2, // 4.2
         minZoom: 2.5,
         pitch: 0,
         bearing: 0,
@@ -174,6 +198,7 @@ const DeckglMap = ({
   //   },
   //   { dependencies: [selectedState, geographyData] }
   // );
+
   const layers = useMemo(
     () =>
       [
@@ -193,14 +218,23 @@ const DeckglMap = ({
                 : 55;
             return [r, g, b, a];
           },
+
+          wireframe: true,
           pickable: true,
           autoHighlight: false,
-          getLineColor: [255, 255, 255, 200],
-          getLineWidth: 0,
+          stroked: true,
+          getLineColor: [234, 234, 234, 200],
+          // extruded: true,
+          // getElevation: (f) => {
+          //   // console.log(elevationScale(f.properties[colorVariable]));
+          //   return elevationScale(f.properties[colorVariable]);
+          // },
+          // elevationScale: 100,
+          getLineWidth: 1,
           lineWidthUnits: "pixels",
           lineWidthScale: 1,
-          // lineWidthMinPixels: 1,
-          // lineWidthMaxPixels: 1,
+          lineWidthMinPixels: 1,
+          lineWidthMaxPixels: 100,
           transitions: {
             // getFillColor: 500,
             getLineColor: 500,
@@ -213,7 +247,7 @@ const DeckglMap = ({
         new GeoJsonLayer({
           id: "state-border-layer-white",
           data: stateData,
-          visible: selectedState.name === "US" ? true : false,
+          // visible: selectedState.name === "US" ? true : false,
           filled: false,
           stroked: true,
           getLineColor: [0, 0, 0, 200],
@@ -273,6 +307,7 @@ const DeckglMap = ({
         viewState={viewState}
         onViewStateChange={onViewStateChange}
         controller={true}
+        // effects={effects}
         layers={[...layers, hoverLayer].filter(Boolean)}
         onHover={onHover}
       >

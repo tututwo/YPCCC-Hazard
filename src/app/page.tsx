@@ -184,7 +184,7 @@ export default function Home() {
 
         {/* Table + Plots Section */}
 
-        <section className=" desktop:min-h-[400px] w-full flex-grow flex flex-row gap-10">
+        <section className=" desktop:min-h-[400px] w-full flex-grow flex flex-row gap-2">
           {/* NOTE: Scatterplot */}
           <div className="mt-4 flex-grow flex flex-col" id="scatterplot-container">
             <h2 className="text-lg font-bold ml-8">
@@ -208,7 +208,7 @@ export default function Home() {
             </figure>
           </div>
 
-          <aside className="w-full desktop:w-1/3 flex-shrink-0 pr-1 flex flex-col">
+          <aside className="w-full desktop:w-2/5 flex-shrink-0 pr-1 flex flex-col">
             <div className="mt-4 mb-1 ">
               <b className="text-xl">3143 Counties</b> in the US
             </div>
