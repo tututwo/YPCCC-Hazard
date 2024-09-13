@@ -51,7 +51,7 @@ import ExpandButton from "@/components/ui/expandButton";
 import { HeatGapHeader } from "@/components/containers/Header";
 // NOTE: Styles
 import "../styles/InputButton.css";
-
+import { useMapStore } from "@/lib/store";
 const xVariable = "xValue";
 const yVariable = "yValue";
 const colorVariable = "gap";
@@ -91,8 +91,9 @@ gsap.registerPlugin(useGSAP);
 //   { ssr: false }
 // );
 export default function Home() {
+  const { data, filteredData, fetchData } = useMapStore();
   const [isDesktop, setIsDesktop] = useState(false);
-  const [data, setData] = useState([]);
+  // const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
   // const [zoomToWhichState, setZoomToWhichState] = useState({});
   // NOTE: Parent size for the deckgl map
@@ -106,17 +107,9 @@ export default function Home() {
     setIsExpanded(false);
   }, []);
   useEffect(() => {
-    csv("/data.csv").then((loadedData) => {
-      loadedData.forEach((d) => {
-        d[xVariable] = +d[xVariable];
-        d[yVariable] = +d[yVariable];
-        d[colorVariable] = +d[colorVariable];
-        d.radius = 3;
-        d.isBrushed = false;
-      });
-      setData(loadedData);
-    });
-  }, []);
+    fetchData();
+  }, [fetchData]);
+
 
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 820);
@@ -195,7 +188,7 @@ export default function Home() {
                 {({ width, height, top, left }) => {
                   return (
                     <Scatterplot
-                      data={data}
+                      data={filteredData}
                       width={width}
                       height={height}
                       xVariable={xVariable}
@@ -213,7 +206,7 @@ export default function Home() {
               <b className="text-xl">3143 Counties</b> in the US
             </div>
             <div className="table-container grow overflow-hidden">
-              <ParentSize>
+              {/* <ParentSize>
                 {({ width, height }) => {
                   return (
                     <DataTableDemo
@@ -225,7 +218,7 @@ export default function Home() {
                     ></DataTableDemo>
                   );
                 }}
-              </ParentSize>
+              </ParentSize> */}
             </div>
 
             <Button variant={"ghost"} className="w-full flex text-sm py-0">

@@ -1,12 +1,17 @@
 import { create } from "zustand";
 import { scaleQuantize } from "d3-scale";
+import { csv } from "d3-fetch";
 
 interface MapState {
   selectedState: { id: number; name: string };
   selectedCounties: string[];
   colorScale: (value: number) => string;
+  data: any[]; // Add this line
+  filteredData: any[]; // Add this line
   setSelectedState: (state: { id: number; name: string }) => void;
   updateSelectedCounties: (counties: string[]) => void;
+  fetchData: () => Promise<void>; // Add this line
+  filterDataByState: (stateName: string) => void; // Add this line
 }
 
 const createColorScale = () => {
@@ -238,11 +243,38 @@ const USStates = [
   },
 ];
 USStates.sort((a, b) => a.name.localeCompare(b.name));
-export const useMapStore = create<MapState>((set) => ({
+export const useMapStore = create<MapState>((set, get) => ({
   selectedState: { id: 0, name: "US" },
   selectedCounties: [],
+  data: [],
+  filteredData: [],
   colorScale: createColorScale(),
-  setSelectedState: (state) => set({ selectedState: state }),
+  setSelectedState: (state) => {
+    set({ selectedState: state });
+    const { data } = get();
+    const filtered = state.name === "US" 
+      ? data 
+      : data.filter((d) => d.state === state.name);
+    set({ filteredData: filtered });
+  },
   updateSelectedCounties: (counties) => set({ selectedCounties: counties }),
   USStates: USStates,
+  fetchData: async () => {
+    const loadedData = await csv("/data.csv");
+    const processedData = loadedData.map((d) => ({
+      ...d,
+      xValue: +d.xValue,
+      yValue: +d.yValue,
+      gap: +d.gap,
+      radius: 3,
+      isBrushed: false,
+    }));
+    set({ data: processedData, filteredData: processedData });
+  },
+  filterDataByState: (stateName) => {
+    const { data } = get();
+    const filtered =
+      stateName === "US" ? data : data.filter((d) => d.state === stateName);
+    set({ filteredData: filtered });
+  },
 }));

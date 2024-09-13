@@ -146,6 +146,7 @@ export default function DataTableDemo({
     });
   }, [debouncedSelectedCounties, table]);
 
+  console.log(debouncedSelectedCounties)
   // const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   const { rows } = table.getRowModel();

@@ -27,7 +27,6 @@ import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
 import Brush from "./brush-components/Brush";
 
-
 import Tooltip from "@/components/ui/tooltip";
 // Add these constants for your color scales
 
@@ -123,12 +122,13 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
-    const canvasRef = useRef(null);
+    const foregroundCanvasRef = useRef(null);
+    const backgroundCanvasRef = useRef(null);
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const xMax = width - margin.left - margin.right;
-    const yMax = height - margin.top - margin.bottom;
+    const xMax = width - margin.left;
+    const yMax = height - margin.bottom;
     const [isBrushing, setIsBrushing] = useState(false);
 
     const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
@@ -193,10 +193,11 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     // }, [coloredData, selectedCounties]);
 
     const { contextSafe } = useGSAP(
+      // draw foreground canvas
       () => {
         const drawCanvas = () => {
           drawPoints(
-            canvasRef.current,
+            foregroundCanvasRef.current,
             coloredAndRaisedData,
             selectedCounties,
             xVariable,
@@ -255,7 +256,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         );
 
         if (closest && !isBrushing) {
-          
           // setHoveredPointId(closest.data.geoid);
           showTooltip({
             tooltipLeft: x(closest.data[xVariable]) + margin.left,
@@ -288,7 +288,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const handleMouseDown = useCallback(() => {
       setIsBrushing(true);
       hideTooltip();
-      setSelectedState({ id: 0, name: "US" });
     }, [hideTooltip]);
 
     const handleMouseUp = useCallback(() => {
@@ -346,7 +345,14 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     return (
       <>
         <canvas
-          ref={canvasRef}
+          ref={backgroundCanvasRef}
+          width={width - margin.left}
+          height={height - margin.top}
+          className="absolute z-10"
+          style={{ top: margin.top + "px", left: margin.left + "px" }}
+        ></canvas>
+        <canvas
+          ref={foregroundCanvasRef}
           width={width - margin.left}
           height={height - margin.top}
           className="absolute z-10"
@@ -433,7 +439,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         {tooltipOpen &&
           tooltipData &&
           tooltipLeft != null &&
-          tooltipTop != null && (            
+          tooltipTop != null && (
             <Tooltip
               left={tooltipLeft + margin.left}
               top={tooltipTop + margin.top}
@@ -443,18 +449,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
               worry={twoSigFigFormatter(tooltipData[yVariable])}
               rating={twoSigFigFormatter(tooltipData[xVariable])}
             />
-            // <Tooltip
-            //   left={tooltipLeft + margin.left}
-            //   top={tooltipTop + margin.top}
-            //   className="z-[1000]"
-            // >
-            //   <div className="z-[1000]">
-            //     <strong>Rating:</strong> {tooltipData[xVariable]}
-            //   </div>
-            //   <div>
-            //     <strong>Worry</strong> {tooltipData[yVariable]}
-            //   </div>
-            // </Tooltip>
           )}
       </>
     );
