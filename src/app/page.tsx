@@ -202,11 +202,9 @@ export default function Home() {
           </div>
 
           <aside className="w-full desktop:w-2/5 flex-shrink-0 pr-1 flex flex-col">
-            <div className="mt-4 mb-1 ">
-              <b className="text-xl">3143 Counties</b> in the US
-            </div>
+            
             <div className="table-container grow overflow-hidden">
-              {/* <ParentSize>
+              <ParentSize>
                 {({ width, height }) => {
                   return (
                     <DataTableDemo
@@ -218,7 +216,7 @@ export default function Home() {
                     ></DataTableDemo>
                   );
                 }}
-              </ParentSize> */}
+              </ParentSize>
             </div>
 
             <Button variant={"ghost"} className="w-full flex text-sm py-0">
