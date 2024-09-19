@@ -175,12 +175,12 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     // Memoize coloredAndRaisedData
     const coloredAndRaisedData = useMemo(() => {
       let result = coloredData;
-      if (hoveredPointId) {
-        const index = result.findIndex((d) => d.geoid === hoveredPointId);
-        if (index !== -1) {
-          result = raise(result, index);
-        }
-      }
+      // if (hoveredPointId) {
+      //   const index = result.findIndex((d) => d.geoid === hoveredPointId);
+      //   if (index !== -1) {
+      //     result = raise(result, index);
+      //   }
+      // }
 
       return result;
     }, [coloredData, hoveredPointId]);
@@ -256,14 +256,14 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         );
 
         if (closest && !isBrushing) {
-          setHoveredPointId(closest.data.geoid);
+          // setHoveredPointId(closest.data.geoid);
           showTooltip({
             tooltipLeft: x(closest.data[xVariable]) + margin.left,
             tooltipTop: y(closest.data[yVariable]) + margin.top,
             tooltipData: closest.data,
           });
         } else {
-          setHoveredPointId(null);
+          // setHoveredPointId(null);
           hideTooltip();
         }
       },
