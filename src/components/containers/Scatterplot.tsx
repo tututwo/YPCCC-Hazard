@@ -256,14 +256,14 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         );
 
         if (closest && !isBrushing) {
-          // setHoveredPointId(closest.data.geoid);
+          setHoveredPointId(closest.data.geoid);
           showTooltip({
             tooltipLeft: x(closest.data[xVariable]) + margin.left,
             tooltipTop: y(closest.data[yVariable]) + margin.top,
             tooltipData: closest.data,
           });
         } else {
-          // setHoveredPointId(null);
+          setHoveredPointId(null);
           hideTooltip();
         }
       },

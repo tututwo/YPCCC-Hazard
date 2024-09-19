@@ -242,7 +242,14 @@ const USStates = [
     name: "US",
   },
 ];
-USStates.sort((a, b) => a.name.localeCompare(b.name));
+const sortedUSStates = USStates.sort((a, b) => {
+  // Always keep "US" at the top
+  if (a.name === "US") return -1;
+  if (b.name === "US") return 1;
+  
+  // For all other states, sort alphabetically
+  return a.name.localeCompare(b.name);
+});
 export const useMapStore = create<MapState>((set, get) => ({
   selectedState: { id: 0, name: "US" },
   selectedCounties: [],
@@ -258,7 +265,7 @@ export const useMapStore = create<MapState>((set, get) => ({
     set({ filteredData: filtered });
   },
   updateSelectedCounties: (counties) => set({ selectedCounties: counties }),
-  USStates: USStates,
+  USStates: sortedUSStates,
   fetchData: async () => {
     const loadedData = await csv("/data.csv");
     const processedData = loadedData.map((d) => ({
