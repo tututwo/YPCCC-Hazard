@@ -2,14 +2,7 @@
 "use client";
 /* eslint-disable react/display-name */
 
-import {
-  useEffect,
-  useState,
-  useMemo,
-  useRef,
-  useLayoutEffect,
-  useCallback,
-} from "react";
+import { useEffect, useState, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -98,27 +91,39 @@ const columns = [
   },
 ];
 // eslint-disable-next-line react/display-name
-export default function DataTableDemo({
-  data,
-  height,
-  xVariable,
-  yVariable,
-  colorVariable,
-}) {
+export default function DataTableDemo({ data, height, xVariable, yVariable, colorVariable }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [filterValue, setFilterValue] = useState("");
 
   const [rowPinning, setRowPinning] = useState({});
 
-  const { colorScale, selectedCounties, updateSelectedCounties } =
-    useMapStore();
+  const { colorScale, selectedCounties, updateSelectedCounties } = useMapStore();
+
+  const [__versionNumber__, setVersion] = useState(0);
+  const triggerRerender = () => setVersion((x) => x + 1);
+  const portal = useRef({});
+  useEffect(() => {
+    // onMount
+    const unsubscribe = svelteStore.subscribe(
+      ({ colorScale, selectedCounties, updateSelectedCounties }) => {
+        portal.current = { colorScale, selectedCounties, updateSelectedCounties };
+        triggerRerender();
+      }
+    );
+    return unsubscribe; // unMount
+  }, []);
+  const { colorScale, selectedCounties, updateSelectedCounties } = portal.current;
+
   const [debouncedSelectedCounties] = useDebounce(selectedCounties, 1000, {
     maxWait: 1500,
   });
-  
-  console.log(debouncedSelectedCounties)
+
+  console.log(debouncedSelectedCounties);
   // Filter data based on selected counties
-  const filteredData = debouncedSelectedCounties.length>0 ? data.filter((d) => debouncedSelectedCounties.includes(d.geoid)) : data
+  const filteredData =
+    debouncedSelectedCounties.length > 0
+      ? data.filter((d) => debouncedSelectedCounties.includes(d.geoid))
+      : data;
   const table = useReactTable({
     data: data,
     columns,
@@ -142,14 +147,11 @@ export default function DataTableDemo({
     table.setRowPinning((prev) => {
       const newTop = table
         .getRowModel()
-        .rows.filter((row) =>
-          debouncedSelectedCounties.includes(row.original.geoid)
-        )
+        .rows.filter((row) => debouncedSelectedCounties.includes(row.original.geoid))
         .map((row) => row.id);
       return { ...prev, top: newTop };
     });
   }, [debouncedSelectedCounties, table]);
-
 
   // const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
@@ -174,12 +176,8 @@ export default function DataTableDemo({
     <>
       <Input
         placeholder="Filter counties..."
-        value={
-          (table.getColumn("County_name")?.getFilterValue() as string) ?? ""
-        }
-        onChange={(event) =>
-          table.getColumn("County_name")?.setFilterValue(event.target.value)
-        }
+        value={(table.getColumn("County_name")?.getFilterValue() as string) ?? ""}
+        onChange={(event) => table.getColumn("County_name")?.setFilterValue(event.target.value)}
         className="w-full mb-4 "
       />
 
@@ -342,7 +340,5 @@ function getCellBackgroundColor(cell, colorVariable, colorScale, rowIndex) {
 }
 
 function getCellTextColor(cell, colorVariable) {
-  return cell.column.id === colorVariable && cell.getValue() > 0.9
-    ? "white"
-    : "black";
+  return cell.column.id === colorVariable && cell.getValue() > 0.9 ? "white" : "black";
 }
