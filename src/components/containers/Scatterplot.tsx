@@ -93,6 +93,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
     const brush = useMemo(
       () => {
+     
         const x = scaleLinear<number>({
           domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
           range: [margin.left, width - margin.right],
@@ -107,7 +108,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
         const coloredData = data.map((d) => ({
           ...d,
-          color: colorScale(d[colorVariable]),
+          color: store.colorScale(d[colorVariable]),
         }));
 
         // let result = coloredData;
@@ -138,17 +139,17 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             drawForegroundPoints(
               foregroundCanvasRef.current,
               selected,
-              selectedCounties,
+              store.selectedCounties,
               xVariable,
               yVariable,
               colorVariable,
               x,
               y,
-              colorScale
+              store.colorScale
             );
 
             // Update the global state
-            updateSelectedCounties(selected.map(([a, b, d]) => d.geoid));
+            store.updateSelectedCounties(selected.map(([a, b, d]) => d.geoid));
           }
         };
 
@@ -183,13 +184,13 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           drawBackgroundPoints(
             backgroundCanvasRef.current,
             data,
-            selectedCounties,
+            store.selectedCounties,
             xVariable,
             yVariable,
             colorVariable,
             x,
             y,
-            colorScale
+            store.colorScale
           );
 
           if (svgRef.current) {
@@ -209,7 +210,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             svg.select(".overlay").attr("pointer-events", "all").attr("fill", "none");
             svg.selectAll(".handle").attr("fill", "none");
           }
-        }, 500);
+        }, 5000);
 
         return brush;
       },
@@ -243,7 +244,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           className="absolute h-full z-50"
           style={{
             maxHeight: height,
-            cursor: isBrushing ? "crosshair" : "pointer",
+           
           }}
         >
           <g id="brush-layer" transform={`translate(${margin.left}, ${margin.top})`}></g>
