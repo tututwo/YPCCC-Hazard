@@ -1,12 +1,6 @@
 // @ts-nocheck
 "use client";
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useRef, useEffect, useState, useMemo, useCallback } from "react";
 // NOTE: D3
 import * as d3 from "d3";
 import { Delaunay } from "d3-delaunay";
@@ -74,14 +68,12 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const innerHeight = height - margin.top - margin.bottom;
     const xMax = width - margin.left;
     const yMax = height - margin.bottom;
-    const [isBrushing, setIsBrushing] = useState(false);
+    // const [isBrushing, setIsBrushing] = useState(false);
 
-    const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
-    const [currentBrushSelection, setCurrentBrushSelection] = useState<
-      Set<string>
-    >(new Set());
-    // FIXME: This is really slow. Improve it
-    const [hoveredPointId, setHoveredPointId] = useState(false);
+    // const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
+    // const [currentBrushSelection, setCurrentBrushSelection] = useState<Set<string>>(new Set());
+    // // FIXME: This is really slow. Improve it
+    // const [hoveredPointId, setHoveredPointId] = useState(false);
     const {
       selectedState,
       setSelectedState,
@@ -89,96 +81,108 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       selectedCounties,
       updateSelectedCounties,
     } = useMapStore();
+    colorScale; // 0 -> 1
+    const store = useRef({}).current; // stable ref object;
+    Object.assign(store, {
+      selectedState,
+      setSelectedState,
+      colorScale, // 1
+      selectedCounties,
+      updateSelectedCounties,
+    });
 
-    // NOTE: Scales
-    const x = useMemo(
-      () =>
-        scaleLinear<number>({
+    const brush = useMemo(
+      () => {
+        const x = scaleLinear<number>({
           domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
           range: [margin.left, width - margin.right],
           clamp: false,
-        }),
-      [data, width]
-    );
-    const y = useMemo(
-      () =>
-        scaleLinear<number>({
+        });
+
+        const y = scaleLinear<number>({
           domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
           range: [height - margin.bottom, margin.top],
           clamp: false,
-        }),
-      [data, height]
-    );
+        });
 
-    // Use the colorScale in your coloredData calculation
-    const coloredData = useMemo(() => {
-      return data.map((d) => ({
-        ...d,
-        color: colorScale(d[colorVariable]),
-      }));
-    }, [data, colorScale, colorVariable]);
-    // Memoize coloredAndRaisedData
-    const coloredAndRaisedData = useMemo(() => {
-      let result = coloredData;
-      if (hoveredPointId) {
-        const index = result.findIndex((d) => d.geoid === hoveredPointId);
-        if (index !== -1) {
-          result = raise(result, index);
-        }
-      }
+        const coloredData = data.map((d) => ({
+          ...d,
+          color: colorScale(d[colorVariable]),
+        }));
 
-      return result;
-    }, [coloredData, hoveredPointId]);
+        // let result = coloredData;
+        // const coloredAndRaisedData = (() => {
+        //   if (hoveredPointId) {
+        //     const index = result.findIndex((d) => d.geoid === hoveredPointId);
+        //     if (index !== -1) {
+        //       result = raise(result, index);
+        //     }
+        //   }
+        // })();
 
-    useEffect(() => {
-      drawBackgroundPoints(
-        backgroundCanvasRef.current,
-        data,
-        selectedCounties,
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale
-      );
-    }, [data, xVariable, yVariable, colorVariable, x, y, colorScale]);
+        const brushed = (event) => {
+          if (event.selection) {
+            const [[x0, y0], [x1, y1]] = event.selection;
+            const selected = [];
+            search(
+              quadtree,
+              [
+                [x0, y0],
+                [x1, y1],
+              ],
+              [],
+              selected
+            );
 
-    // NOTE: Add Brush
-    const quadtree = useMemo(() => {
-      const tree = d3
-        .quadtree()
-        .extent([
-          [margin.left, margin.top],
-          [width + margin.left, height + margin.top],
-        ])
-        .addAll(
-          // x,y,data point, z index
-          data.map((d) => [x(d[xVariable]), y(d[yVariable]), d, Math.random()])
-        );
+            console.log(selected);
+            drawForegroundPoints(
+              foregroundCanvasRef.current,
+              selected,
+              selectedCounties,
+              xVariable,
+              yVariable,
+              colorVariable,
+              x,
+              y,
+              colorScale
+            );
 
-      return tree;
-    }, [data, width, height, x, y, xVariable, yVariable]);
+            // Update the global state
+            updateSelectedCounties(selected.map(([a, b, d]) => d.geoid));
+          }
+        };
 
-    const brushed = useCallback(
-      (event) => {
-        if (event.selection) {
-          const [[x0, y0], [x1, y1]] = event.selection;
-          const selected = [];
-          search(
-            quadtree,
-            [
-              [x0, y0],
-              [x1, y1],
-            ],
-            [],
-            selected
+        const brushended = (event) => {
+          if (!event.selection) {
+            const ctx = foregroundCanvasRef.current.getContext("2d");
+            ctx.clearRect(0, 0, width, height);
+          }
+        };
+
+        const brush = d3
+          .brush()
+          .extent([
+            [margin.left, margin.top],
+            [width - margin.right, height - margin.bottom],
+          ])
+          .on("start brush", brushed)
+          .on("end", brushended);
+
+        const quadtree = d3
+          .quadtree()
+          .extent([
+            [margin.left, margin.top],
+            [width + margin.left, height + margin.top],
+          ])
+          .addAll(
+            // x,y,data point, z index
+            data.map((d) => [x(d[xVariable]), y(d[yVariable]), d, Math.random()])
           );
 
-          console.log(selected);
-          drawForegroundPoints(
-            foregroundCanvasRef.current,
-            selected,
+        setTimeout(() => {
+          drawBackgroundPoints(
+            backgroundCanvasRef.current,
+            data,
             selectedCounties,
             xVariable,
             yVariable,
@@ -188,68 +192,32 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             colorScale
           );
 
-          // Update the global state
-          updateSelectedCounties(selected.map(([a, b, d]) => d.geoid));
-        }
+          if (svgRef.current) {
+            const svg = d3.select(svgRef.current);
+            svg.select("g#brush-layer").call(brush);
+
+            svg
+              .select(".selection")
+              .attr("fill", "#A7BDD3")
+              .attr("fill-opacity", 0.08)
+              .attr("stroke", "#12375A")
+              .attr("stroke-width", 1)
+              .attr("stroke-opacity", 0.8);
+
+            svg.selectAll(".handle").attr("fill", "#000").attr("fill-opacity", 0.2);
+
+            svg.select(".overlay").attr("pointer-events", "all").attr("fill", "none");
+            svg.selectAll(".handle").attr("fill", "none");
+          }
+        }, 500);
+
+        return brush;
       },
+
       [
-        quadtree,
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale,
-        selectedCounties,
+        /*empty*/
       ]
     );
-
-    const brushended = useCallback(
-      (event) => {
-        if (!event.selection) {
-          setCurrentBrushSelection(new Set());
-          const ctx = foregroundCanvasRef.current.getContext("2d");
-          ctx.clearRect(0, 0, width, height);
-        }
-      },
-      [width, height]
-    );
-    const brush = useMemo(
-      () =>
-        d3
-          .brush()
-          .extent([
-            [margin.left, margin.top],
-            [width - margin.right, height - margin.bottom],
-          ])
-          .on("start brush", brushed)
-          .on("end", brushended),
-      [width, height, brushed, brushended]
-    );
-
-    // NOTE: Add Brush and style the selection rectangle
-    useEffect(() => {
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
-        svg.select("g#brush-layer").call(brush);
-
-        svg
-          .select(".selection")
-          .attr("fill", "#A7BDD3")
-          .attr("fill-opacity", 0.08)
-          .attr("stroke", "#12375A")
-          .attr("stroke-width", 1)
-          .attr("stroke-opacity", 0.8);
-
-        svg.selectAll(".handle").attr("fill", "#000").attr("fill-opacity", 0.2);
-
-        svg
-          .select(".overlay")
-          .attr("pointer-events", "all")
-          .attr("fill", "none");
-        svg.selectAll(".handle").attr("fill", "none");
-      }
-    }, [brush]);
 
     return (
       <>
@@ -278,10 +246,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             cursor: isBrushing ? "crosshair" : "pointer",
           }}
         >
-          <g
-            id="brush-layer"
-            transform={`translate(${margin.left}, ${margin.top})`}
-          ></g>
+          <g id="brush-layer" transform={`translate(${margin.left}, ${margin.top})`}></g>
         </svg>
       </>
     );
