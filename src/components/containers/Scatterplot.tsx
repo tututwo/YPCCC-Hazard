@@ -83,6 +83,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     // FIXME: This is really slow. Improve it
     const [hoveredPointId, setHoveredPointId] = useState(false);
     const {
+      filteredData,
       selectedState,
       setSelectedState,
       colorScale,
@@ -90,24 +91,30 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       updateSelectedCounties,
     } = useMapStore();
 
-    // NOTE: Scales
     const x = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
+          domain: d3.extent(filteredData, (d) => d[xVariable]) as [
+            number,
+            number
+          ],
           range: [margin.left, width - margin.right],
           clamp: false,
         }),
-      [data, width]
+      [filteredData, width, xVariable]
     );
+
     const y = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
+          domain: d3.extent(filteredData, (d) => d[yVariable]) as [
+            number,
+            number
+          ],
           range: [height - margin.bottom, margin.top],
           clamp: false,
         }),
-      [data, height]
+      [filteredData, height, yVariable]
     );
 
     // Use the colorScale in your coloredData calculation
@@ -145,28 +152,34 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     }, [data, xVariable, yVariable, colorVariable, x, y, colorScale]);
 
     // NOTE: Add Brush
-    const quadtree = useMemo(() => {
-      const tree = d3
-        .quadtree()
-        .extent([
-          [margin.left, margin.top],
-          [width + margin.left, height + margin.top],
-        ])
-        .addAll(
-          // x,y,data point, z index
-          data.map((d) => [x(d[xVariable]), y(d[yVariable]), d, Math.random()])
-        );
-
-      return tree;
-    }, [data, width, height, x, y, xVariable, yVariable]);
+    const quadtreeRef = useRef<d3.Quadtree<any> | null>(null);
+    useEffect(() => {
+      if (filteredData.length > 0) {
+        const tree = d3
+          .quadtree<any>()
+          .addAll(
+            filteredData.map((d) => [
+              x(d[xVariable]),
+              y(d[yVariable]),
+              d,
+              Math.random(),
+            ])
+          );
+        quadtreeRef.current = tree;
+      } else {
+        quadtreeRef.current = null;
+      }
+    }, [filteredData, x, y, xVariable, yVariable]);
 
     const brushed = useCallback(
-      (event) => {
-        if (event.selection) {
+      (event: any) => {
+        if (event.selection && quadtreeRef.current) {
           const [[x0, y0], [x1, y1]] = event.selection;
-          const selected = [];
+          const selected: any[] = [];
+
+          // Perform quadtree search
           search(
-            quadtree,
+            quadtreeRef.current,
             [
               [x0, y0],
               [x1, y1],
@@ -175,32 +188,33 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             selected
           );
 
-          console.log(selected);
-          drawForegroundPoints(
-            foregroundCanvasRef.current,
-            selected,
-            selectedCounties,
-            xVariable,
-            yVariable,
-            colorVariable,
-            x,
-            y,
-            colorScale
-          );
+          // Draw foreground points based on selection
+          if (foregroundCanvasRef.current) {
+            drawForegroundPoints(
+              foregroundCanvasRef.current,
+              selected,
+              [],
+              xVariable,
+              yVariable,
+              colorVariable,
+              x,
+              y,
+              colorScale
+            );
+          }
 
-          // Update the global state
-          updateSelectedCounties(selected.map(([a, b, d]) => d.geoid));
+          // Update global state with selected counties
+          updateSelectedCounties(selected.map((d) => d.geoid));
         }
       },
       [
-        quadtree,
         xVariable,
         yVariable,
         colorVariable,
         x,
         y,
         colorScale,
-        selectedCounties,
+        updateSelectedCounties,
       ]
     );
 
@@ -249,7 +263,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           .attr("fill", "none");
         svg.selectAll(".handle").attr("fill", "none");
       }
-    }, [brush]);
+    }, [width, height]);
 
     return (
       <>

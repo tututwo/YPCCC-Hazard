@@ -65,10 +65,11 @@ export function drawForegroundPoints(
   colorScale
 ) {
   const ctx = canvas.getContext("2d");
- 
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const shuffledDataset = dataset.sort((a, b) => a[3] - b[3]);
-  shuffledDataset.forEach(([a, b, d]) => {
+
+  shuffledDataset.forEach(([a, b, d, zIndex]) => {
     // NOTE: Larger circle
 
     // big circle
@@ -77,7 +78,7 @@ export function drawForegroundPoints(
     ctx.arc(
       xScale(d[xVariable]),
       yScale(d[yVariable]),
-      d.radius * 2.4,
+      d.radius * 2.9,
       0,
       2 * Math.PI
     );
@@ -100,7 +101,7 @@ export function drawForegroundPoints(
     ctx.arc(
       xScale(d[xVariable]),
       yScale(d[yVariable]),
-      d.radius * 1.8,
+      d.radius * 2,
       0,
       2 * Math.PI
     );
@@ -121,6 +122,7 @@ export function search(quadtree, [[x0, y0], [x3, y3]], scanned, selected) {
           data: d,
           data: [x, y],
         } = node;
+
         const test = x >= x0 && x < x3 && y >= y0 && y < y3;
         (test ? selected : scanned).push(d);
         return test;

@@ -110,7 +110,6 @@ export default function Home() {
     fetchData();
   }, [fetchData]);
 
-
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 820);
   }, []);
@@ -142,10 +141,7 @@ export default function Home() {
           onMouseEnter={handleMouseLeave}
         >
           {/* NOTE:Actual Map */}
-          <figure
-            ref={parentRef}
-            className="flex-grow h-full relative z-10 "
-          >
+          <figure ref={parentRef} className="flex-grow h-full relative z-10 ">
             <DeckglMap
               width={width}
               height={height}
@@ -179,30 +175,36 @@ export default function Home() {
 
         <section className=" desktop:min-h-[400px] w-full flex-grow flex flex-row gap-2">
           {/* NOTE: Scatterplot */}
-          <div className="mt-4 flex-grow flex flex-col" id="scatterplot-container">
+          <div
+            className="mt-4 flex-grow flex flex-col"
+            id="scatterplot-container"
+          >
             <h2 className="text-lg font-bold ml-8">
               Heat worry and Heat rating of all counties
             </h2>
             <figure className="w-full flex-grow">
-              <ParentSize>
-                {({ width, height, top, left }) => {
-                  return (
-                    <Scatterplot
-                      data={filteredData}
-                      width={width}
-                      height={height}
-                      xVariable={xVariable}
-                      yVariable={yVariable}
-                      colorVariable={colorVariable}
-                    ></Scatterplot>
-                  );
-                }}
-              </ParentSize>
+              {filteredData.length > 0 ? (
+                <ParentSize>
+                  {({ width, height, top, left }) => {
+                    return (
+                      <Scatterplot
+                        data={filteredData}
+                        width={width}
+                        height={height}
+                        xVariable={xVariable}
+                        yVariable={yVariable}
+                        colorVariable={colorVariable}
+                      ></Scatterplot>
+                    );
+                  }}
+                </ParentSize>
+              ) : (
+                <p>Loading data...</p>
+              )}
             </figure>
           </div>
 
           <aside className="w-full desktop:w-2/5 flex-shrink-0 pr-1 flex flex-col">
-            
             <div className="table-container grow overflow-hidden">
               <ParentSize>
                 {({ width, height }) => {
