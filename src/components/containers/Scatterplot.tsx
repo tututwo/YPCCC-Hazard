@@ -47,7 +47,7 @@ const tickLabelProps = {
 };
 let tooltipTimeout: number;
 
-const margin = { top: 10, right: 80, bottom: 50, left: 60 };
+const margin = { top: 10, right: 80, bottom: 50, left: 10 };
 gsap.registerPlugin(useGSAP);
 
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
@@ -94,27 +94,27 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const x = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(filteredData, (d) => d[xVariable]) as [
+          domain: d3.extent(data, (d) => d[xVariable]) as [
             number,
             number
           ],
           range: [margin.left, width - margin.right],
           clamp: false,
         }),
-      [filteredData, width, xVariable]
+      [data, width, xVariable]
     );
 
     const y = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(filteredData, (d) => d[yVariable]) as [
+          domain: d3.extent(data, (d) => d[yVariable]) as [
             number,
             number
           ],
           range: [height - margin.bottom, margin.top],
           clamp: false,
         }),
-      [filteredData, height, yVariable]
+      [data, height, yVariable]
     );
 
     // Use the colorScale in your coloredData calculation
