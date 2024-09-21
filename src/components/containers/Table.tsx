@@ -112,18 +112,11 @@ export default function DataTableDemo({
 
   const { colorScale, selectedCounties, updateSelectedCounties } =
     useMapStore();
-  const [debouncedSelectedCounties] = useDebounce(selectedCounties, 300, {
+  const [debouncedSelectedCounties] = useDebounce(selectedCounties, 1000, {
     maxWait: 1500,
   });
-
-  // Filter data based on selected counties
-  const filteredData = useMemo(() => {
-    return debouncedSelectedCounties.length > 0
-      ? data.filter((d) => debouncedSelectedCounties.includes(d.geoid))
-      : data;
-  }, [data, debouncedSelectedCounties]);
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -132,13 +125,28 @@ export default function DataTableDemo({
     globalFilterFn: "includesString", // Use the built-in filter function
     state: {
       sorting,
-
+      rowPinning,
       globalFilter: filterValue, // Use globalFilter instead of columnFilters
     },
     onGlobalFilterChange: setFilterValue,
     onRowPinningChange: setRowPinning,
+    enableRowPinning: true,
+    keepPinnedRows: true,
   });
 
+  useEffect(() => {
+    table.setRowPinning((prev) => {
+      const newTop = table
+        .getRowModel()
+        .rows.filter((row) =>
+          debouncedSelectedCounties.includes(row.original.geoid)
+        )
+        .map((row) => row.id);
+      return { ...prev, top: newTop };
+    });
+  }, [debouncedSelectedCounties, table]);
+
+  console.log(debouncedSelectedCounties)
   // const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   const { rows } = table.getRowModel();
@@ -147,9 +155,10 @@ export default function DataTableDemo({
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Update the virtualizer to use the filtered rows count
+  const allRows = [...table.getTopRows(), ...table.getCenterRows()];
 
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: allRows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 35,
     overscan: 20, // 20 rows to render before and after the visible area
@@ -159,9 +168,6 @@ export default function DataTableDemo({
 
   return (
     <>
-      <div className="mt-4 mb-1 ">
-        <b className="text-xl">{rows.length}</b> Selected US Counties
-      </div>
       <Input
         placeholder="Filter counties..."
         value={
@@ -218,7 +224,7 @@ export default function DataTableDemo({
             }}
           >
             {virtualizer.getVirtualItems().map((virtualRow, rowIndex) => {
-              const row = rows[virtualRow.index];
+              const row = allRows[virtualRow.index];
               const isPinned = row.getIsPinned();
 
               return (
