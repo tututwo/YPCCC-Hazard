@@ -38,6 +38,11 @@ import {
 } from "@/lib/utils";
 // Add these constants for your color scales
 
+// NOTE: R3F
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import { Particles } from "./scatterplot-r3f/Scatterplot-R3f";
+
 const tickLabelProps = {
   fill: "#222",
   fontFamily: "Roboto",
@@ -94,10 +99,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const x = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[xVariable]) as [
-            number,
-            number
-          ],
+          domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
           range: [margin.left, width - margin.right],
           clamp: false,
         }),
@@ -107,10 +109,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const y = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[yVariable]) as [
-            number,
-            number
-          ],
+          domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
           range: [height - margin.bottom, margin.top],
           clamp: false,
         }),
@@ -136,20 +135,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
       return result;
     }, [coloredData, hoveredPointId]);
-
-    useEffect(() => {
-      drawBackgroundPoints(
-        backgroundCanvasRef.current,
-        data,
-        selectedCounties,
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale
-      );
-    }, [data, xVariable, yVariable, colorVariable, x, y, colorScale]);
 
     // NOTE: Add Brush
     const quadtreeRef = useRef<d3.Quadtree<any> | null>(null);
@@ -188,23 +173,9 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             selected
           );
 
-          // Draw foreground points based on selection
-          if (foregroundCanvasRef.current) {
-            drawForegroundPoints(
-              foregroundCanvasRef.current,
-              selected,
-              [],
-              xVariable,
-              yVariable,
-              colorVariable,
-              x,
-              y,
-              colorScale
-            );
-          }
-
+          // console.log(selected);
           // Update global state with selected counties
-          updateSelectedCounties(selected.map((d) => d.geoid));
+          updateSelectedCounties(selected.map((d) => d[2].geoid));
         }
       },
       [
@@ -267,26 +238,23 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
     return (
       <>
-        <canvas
-          ref={backgroundCanvasRef}
-          width={width * window.devicePixelRatio - margin.left}
-          height={height * window.devicePixelRatio - margin.top}
-          className="absolute z-10"
-          style={{ top: margin.top + "px", left: margin.left + "px" }}
-        ></canvas>
-        <canvas
-          ref={foregroundCanvasRef}
-          width={width * window.devicePixelRatio - margin.left}
-          height={height * window.devicePixelRatio - margin.top}
-          className="absolute z-10"
-          style={{ top: margin.top + "px", left: margin.left + "px" }}
-        ></canvas>
+        <Canvas
+          camera={{
+            fov: 45,
+            near: 0.1,
+            far: 200,
+            position: [-4, 3, 6],
+          }}
+        >
+          <OrbitControls makeDefault />
+          <Particles />
+        </Canvas>
 
         {/* Brush Interface */}
         <svg
           ref={svgRef}
           width={width}
-          className="absolute h-full z-50"
+          className="absolute h-full z-50 top-0 left-0"
           style={{
             maxHeight: height,
             cursor: isBrushing ? "crosshair" : "pointer",
