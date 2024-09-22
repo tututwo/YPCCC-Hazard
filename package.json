@@ -28,6 +28,7 @@
     "@turf/bbox": "^7.1.0",
     "@turf/point-to-line-distance": "^7.1.0",
     "@turf/turf": "^7.1.0",
+    "@types/three": "^0.168.0",
     "@types/topojson-client": "^3.1.4",
     "@visx/responsive": "^3.10.2",
     "@visx/visx": "^3.11.0",

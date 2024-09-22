@@ -40,6 +40,7 @@ import {
 
 // NOTE: R3F
 import { Canvas } from "@react-three/fiber";
+
 import { OrbitControls } from "@react-three/drei";
 import { Particles } from "./scatterplot-r3f/Scatterplot-R3f";
 
