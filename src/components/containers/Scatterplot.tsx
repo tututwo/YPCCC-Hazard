@@ -185,13 +185,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       return result;
     }, [coloredData, hoveredPointId]);
 
-    // const coloredAndRaisedData = useMemo(() => {
-    //   return coloredData.map(d => ({
-    //     ...d,
-    //     isBrushed: selectedCounties.includes(d.geoid)
-    //   }));
-    // }, [coloredData, selectedCounties]);
-
     const { contextSafe } = useGSAP(
       // draw foreground canvas
       () => {
@@ -286,51 +279,83 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     }, [hideTooltip]);
 
     const handleMouseDown = useCallback(() => {
-      setIsBrushing(true);
+      // setIsBrushing(true);
       hideTooltip();
     }, [hideTooltip]);
 
     const handleMouseUp = useCallback(() => {
-      setIsBrushing(false);
+      // setIsBrushing(false);
     }, [currentBrushSelection]); // Add dependencies here
 
+    const radiusQuickSetters = useMemo(() => {
+      return coloredAndRaisedData.map((d) => ({
+        geoid: d.geoid,
+        setRadius: gsap.quickTo(d, "radius", {
+          duration: 0.15,
+          ease: "power2.inOut",
+        }),
+      }));
+    }, [coloredAndRaisedData]);
+    const prevBrushedItems = useRef<Set<string>>(new Set());
     const handleBrushChange = contextSafe((domain: Bounds | null) => {
       if (!domain) return;
 
       const { x0, x1, y0, y1 } = domain;
-      const selectedPointsSet = new Set(
-        data
-          .filter(
-            (point) =>
-              point[xVariable] >= x0 &&
-              point[xVariable] <= x1 &&
-              point[yVariable] >= y0 &&
-              point[yVariable] <= y1
-          )
-          .map((point) => point.geoid)
-      );
-      // animation
+      const selectedPointsSet = new Set<string>();
+
       coloredAndRaisedData.forEach((d) => {
         const isBrushed =
           d[xVariable] >= x0 &&
           d[xVariable] <= x1 &&
           d[yVariable] >= y0 &&
           d[yVariable] <= y1;
+
+        // Determine if the item was previously brushed
+        const wasBrushed = prevBrushedItems.current.has(d.geoid);
+
         d.isBrushed = isBrushed;
+
+        // Find the quickSetter for this data point
+        const quickSetter = radiusQuickSetters.find((s) => s.geoid === d.geoid);
+        // Use quickTo for both entrance and exit animations
+        if (quickSetter) {
+          quickSetter.setRadius(isBrushed ? 6 : 3);
+        }
+
         if (isBrushed) {
           selectedPointsSet.add(d.geoid);
         }
-
-        gsap.to(d, {
-          radius: isBrushed ? 6 : 3,
-          duration: 0.1,
-          ease: "power2.inOut",
-        });
+        // if (isBrushed) {
+        //   selectedPointsSet.add(d.geoid);
+        //   // Use quickTo to set radius to 6 for brushed items
+        //   if (quickSetter) {
+        //     quickSetter.setRadius(6);
+        //   }
+        // } else {
+        //   // If the item was previously brushed and is now unbrushed, trigger exit animation
+        //   if (wasBrushed) {
+        //     // Start GSAP tween from current radius to 3
+        //     gsap.to(d, {
+        //       radius: 3,
+        //       duration: 0.5,
+        //       ease: "power2.inOut",
+        //     });
+        //   } else {
+        //     // For unbrushed items that were not previously brushed, ensure radius is 3
+        //     if (d.radius !== 3 && quickSetter) {
+        //       quickSetter.setRadius(3);
+        //     }
+        //   }
+        // }
       });
-      setCurrentBrushSelection(selectedPointsSet);
-      setBrushedCircles(currentBrushSelection);
 
-      updateSelectedCounties(Array.from(currentBrushSelection));
+      // Update prevBrushedItems after handling all data points
+      prevBrushedItems.current = selectedPointsSet;
+
+      // Update state
+      setCurrentBrushSelection(selectedPointsSet);
+      setBrushedCircles(selectedPointsSet);
+      updateSelectedCounties(Array.from(selectedPointsSet));
     });
     const selectedBoxStyle = useMemo(
       () => ({
@@ -430,7 +455,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
               onBrushEnd={handleMouseUp}
               onMouseLeave={handleMouseLeave}
               useWindowMoveEvents
-              onVoronoiMouseMove={handleMouseMove}
               selectedBoxStyle={selectedBoxStyle}
             />
           </Group>
