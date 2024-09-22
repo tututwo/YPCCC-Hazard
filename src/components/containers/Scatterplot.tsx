@@ -66,182 +66,101 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     tooltipLeft,
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
-    const svgRef = useRef(null);
-    const foregroundCanvasRef = useRef(null);
-    const backgroundCanvasRef = useRef(null);
+    const svgRef = useRef<SVGSVGElement>(null);
+    const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
+    const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
 
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-    const xMax = width - margin.left;
-    const yMax = height - margin.bottom;
-    const [isBrushing, setIsBrushing] = useState(false);
+    const { colorScale, updateSelectedCounties } = useMapStore();
 
-    const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
-    const [currentBrushSelection, setCurrentBrushSelection] = useState<
-      Set<string>
-    >(new Set());
-    // FIXME: This is really slow. Improve it
-    const [hoveredPointId, setHoveredPointId] = useState(false);
-    const {
-      filteredData,
-      selectedState,
-      setSelectedState,
-      colorScale,
-      selectedCounties,
-      updateSelectedCounties,
-    } = useMapStore();
-
-    const x = useMemo(
+    const xScale = useMemo(
       () =>
-        scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[xVariable]) as [
-            number,
-            number
-          ],
-          range: [margin.left, width - margin.right],
-          clamp: false,
-        }),
+        d3
+          .scaleLinear()
+          .domain(d3.extent(data, (d) => d[xVariable]) as [number, number])
+          .range([margin.left, width - margin.right]),
       [data, width, xVariable]
     );
 
-    const y = useMemo(
+    const yScale = useMemo(
       () =>
-        scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[yVariable]) as [
-            number,
-            number
-          ],
-          range: [height - margin.bottom, margin.top],
-          clamp: false,
-        }),
+        d3
+          .scaleLinear()
+          .domain(d3.extent(data, (d) => d[yVariable]) as [number, number])
+          .range([height - margin.bottom, margin.top]),
       [data, height, yVariable]
     );
 
-    // Use the colorScale in your coloredData calculation
-    const coloredData = useMemo(() => {
-      return data.map((d) => ({
-        ...d,
-        color: colorScale(d[colorVariable]),
-      }));
-    }, [data, colorScale, colorVariable]);
-    // Memoize coloredAndRaisedData
-    const coloredAndRaisedData = useMemo(() => {
-      let result = coloredData;
-      if (hoveredPointId) {
-        const index = result.findIndex((d) => d.geoid === hoveredPointId);
-        if (index !== -1) {
-          result = raise(result, index);
-        }
-      }
+    // Circle Data Refs
+    const circleDataRef = useRef<any[]>([]);
+    const circleDataMapRef = useRef<Map<string, any>>(new Map());
 
-      return result;
-    }, [coloredData, hoveredPointId]);
-
-    useEffect(() => {
-      drawBackgroundPoints(
-        backgroundCanvasRef.current,
-        data,
-        selectedCounties,
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale
-      );
-    }, [data, xVariable, yVariable, colorVariable, x, y, colorScale]);
-
-    // NOTE: Add Brush
+    // Build quadtree for efficient searching
     const quadtreeRef = useRef<d3.Quadtree<any> | null>(null);
+
+    // Initialize circle data and quadtree
     useEffect(() => {
-      if (filteredData.length > 0) {
-        const tree = d3
-          .quadtree<any>()
-          .addAll(
-            filteredData.map((d) => [
-              x(d[xVariable]),
-              y(d[yVariable]),
-              d,
-              Math.random(),
-            ])
-          );
-        quadtreeRef.current = tree;
-      } else {
-        quadtreeRef.current = null;
-      }
-    }, [filteredData, x, y, xVariable, yVariable]);
+      const circles = data.map((d) => {
+        const circle = {
+          x: xScale(d[xVariable]),
+          y: yScale(d[yVariable]),
+          radius: d.radius || 3,
+          baseRadius: d.radius || 3,
+          color: colorScale(d[colorVariable]),
+          fillColor: colorScale(d[colorVariable]),
+          alpha: 0.8,
+          state: "default",
+          data: d,
+          tween: null, // GSAP tween
+        };
+        return circle;
+      });
 
-    const brushed = useCallback(
-      (event: any) => {
-        if (event.selection && quadtreeRef.current) {
-          const [[x0, y0], [x1, y1]] = event.selection;
-          const selected: any[] = [];
+      circleDataRef.current = circles;
 
-          // Perform quadtree search
-          search(
-            quadtreeRef.current,
-            [
-              [x0, y0],
-              [x1, y1],
-            ],
-            [],
-            selected
-          );
+      // Create a map for quick access
+      const map = new Map();
+      circles.forEach((circle) => {
+        map.set(circle.data.geoid, circle);
+      });
+      circleDataMapRef.current = map;
 
-          // Draw foreground points based on selection
-          if (foregroundCanvasRef.current) {
-            drawForegroundPoints(
-              foregroundCanvasRef.current,
-              selected,
-              [],
-              xVariable,
-              yVariable,
-              colorVariable,
-              x,
-              y,
-              colorScale
-            );
-          }
+      // Build quadtree
+      const tree = d3
+        .quadtree<any>()
+        .x((d) => d.x)
+        .y((d) => d.y)
+        .addAll(circleDataRef.current);
+      quadtreeRef.current = tree;
 
-          // Update global state with selected counties
-          updateSelectedCounties(selected.map((d) => d.geoid));
-        }
-      },
-      [
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale,
-        updateSelectedCounties,
-      ]
-    );
+      // Draw background circles
+      const ctxBackground = backgroundCanvasRef.current!.getContext("2d")!;
+      ctxBackground.clearRect(0, 0, width, height);
+      circles.forEach((circle) => {
+        ctxBackground.beginPath();
+        ctxBackground.arc(
+          circle.x,
+          circle.y,
+          circle.baseRadius,
+          0,
+          2 * Math.PI
+        );
+        ctxBackground.fillStyle = circle.color;
+        ctxBackground.globalAlpha = circle.alpha;
+        ctxBackground.fill();
+      });
+    }, [
+      data,
+      xScale,
+      yScale,
+      xVariable,
+      yVariable,
+      colorScale,
+      colorVariable,
+      width,
+      height,
+    ]);
 
-    const brushended = useCallback(
-      (event) => {
-        if (!event.selection) {
-          setCurrentBrushSelection(new Set());
-          const ctx = foregroundCanvasRef.current.getContext("2d");
-          ctx.clearRect(0, 0, width, height);
-        }
-      },
-      [width, height]
-    );
-    const brush = useMemo(
-      () =>
-        d3
-          .brush()
-          .extent([
-            [margin.left, margin.top],
-            [width - margin.right, height - margin.bottom],
-          ])
-          .on("start brush", brushed)
-          .on("end", brushended),
-      [width, height, brushed, brushended]
-    );
-
-    // NOTE: Add Brush and style the selection rectangle
+    // Initialize brush
     useEffect(() => {
       if (svgRef.current) {
         const svg = d3.select(svgRef.current);
@@ -265,20 +184,164 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       }
     }, [width, height]);
 
+    // Brush functions
+    const brushing = useRef(false);
+
+    const { contextSafe } = useGSAP({ scope: svgRef });
+
+    const brushed = useCallback(
+      contextSafe((event: any) => {
+        brushing.current = true;
+
+        if (event.selection && quadtreeRef.current) {
+          const [[x0, y0], [x1, y1]] = event.selection;
+          const selected: any[] = [];
+
+          // Perform quadtree search
+          search(
+            quadtreeRef.current,
+            [
+              [x0, y0],
+              [x1, y1],
+            ],
+            [],
+            selected
+          );
+
+          const selectedSet = new Set(selected.map((d) => d.data.geoid));
+
+          // Update circle states
+          circleDataRef.current.forEach((circle) => {
+            if (selectedSet.has(circle.data.geoid)) {
+              if (circle.state !== "selected") {
+                circle.state = "selected";
+                circle.fillColor = "red";
+                if (circle.tween) circle.tween.kill();
+
+                circle.tween = gsap.to(circle, {
+                  radius: circle.baseRadius * 2,
+                  duration: 0.3,
+                  overwrite: true,
+                  onUpdate: () => {
+                    updateCircle(circle);
+                  },
+                });
+              }
+            } else {
+              if (circle.state !== "default") {
+                circle.state = "default";
+                circle.fillColor = circle.color;
+                if (circle.tween) circle.tween.kill();
+
+                circle.tween = gsap.to(circle, {
+                  radius: circle.baseRadius,
+                  duration: 0.3,
+                  overwrite: true,
+                  onUpdate: () => {
+                    updateCircle(circle);
+                  },
+                });
+              }
+            }
+          });
+
+          // Update global state with selected counties
+          updateSelectedCounties(Array.from(selectedSet));
+        } else {
+          // No selection, reset all
+          circleDataRef.current.forEach((circle) => {
+            if (circle.state !== "default") {
+              circle.state = "default";
+              circle.fillColor = circle.color;
+              if (circle.tween) circle.tween.kill();
+
+              circle.tween = gsap.to(circle, {
+                radius: circle.baseRadius,
+                duration: 0.3,
+                overwrite: true,
+                onUpdate: () => {
+                  updateCircle(circle);
+                },
+              });
+            }
+          });
+          updateSelectedCounties([]);
+        }
+      }),
+      [updateSelectedCounties, contextSafe]
+    );
+
+    const brushended = useCallback(
+      contextSafe((event: any) => {
+        brushing.current = false;
+      }),
+      [contextSafe]
+    );
+
+    const brush = useMemo(
+      () =>
+        d3
+          .brush()
+          .extent([
+            [margin.left, margin.top],
+            [width - margin.right, height - margin.bottom],
+          ])
+          .on("start brush", brushed)
+          .on("end", brushended),
+      [width, height, brushed, brushended]
+    );
+
+    // Update circle on animation update
+    const updateCircle = useCallback((circle: any) => {
+      // Only update the portion of the canvas where the circle is
+      const ctx = foregroundCanvasRef.current!.getContext("2d")!;
+      const padding = circle.baseRadius * 2; // Add padding to clear area around the circle
+      ctx.clearRect(
+        circle.x - padding,
+        circle.y - padding,
+        padding * 2,
+        padding * 2
+      );
+
+      ctx.beginPath();
+      ctx.arc(circle.x, circle.y, circle.radius, 0, 2 * Math.PI);
+      ctx.fillStyle = circle.fillColor;
+      ctx.globalAlpha = circle.alpha;
+      ctx.fill();
+    }, []);
+
+    // Render loop
+    useEffect(() => {
+      const ctx = foregroundCanvasRef.current!.getContext("2d")!;
+      ctx.clearRect(0, 0, width, height);
+
+      // Initial draw
+      circleDataRef.current.forEach((circle) => {
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, circle.radius, 0, 2 * Math.PI);
+        ctx.fillStyle = circle.fillColor;
+        ctx.globalAlpha = circle.alpha;
+        ctx.fill();
+      });
+    }, [width, height]);
+
     return (
       <>
+        {/* Background Canvas */}
         <canvas
           ref={backgroundCanvasRef}
-          width={width * window.devicePixelRatio - margin.left}
-          height={height * window.devicePixelRatio - margin.top}
+          width={width}
+          height={height}
           className="absolute z-10"
           style={{ top: margin.top + "px", left: margin.left + "px" }}
         ></canvas>
+
+        {/* Foreground Canvas */}
         <canvas
           ref={foregroundCanvasRef}
-          width={width * window.devicePixelRatio - margin.left}
-          height={height * window.devicePixelRatio - margin.top}
-          className="absolute z-10"
+          width={width}
+          height={height}
+          className="absolute z-20"
           style={{ top: margin.top + "px", left: margin.left + "px" }}
         ></canvas>
 
@@ -286,10 +349,11 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         <svg
           ref={svgRef}
           width={width}
+          height={height}
           className="absolute h-full z-50"
           style={{
             maxHeight: height,
-            cursor: isBrushing ? "crosshair" : "pointer",
+            cursor: "crosshair",
           }}
         >
           <g

@@ -117,10 +117,11 @@ export function search(quadtree, [[x0, y0], [x3, y3]], scanned, selected) {
   quadtree.visit((node, x1, y1, x2, y2) => {
     // console.log(node);
     if (!node.length) {
+      console.log(node);
       do {
         const {
           data: d,
-          data: [x, y],
+          data: {x, y},
         } = node;
 
         const test = x >= x0 && x < x3 && y >= y0 && y < y3;
