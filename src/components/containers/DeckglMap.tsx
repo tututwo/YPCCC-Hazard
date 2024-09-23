@@ -242,6 +242,7 @@ const DeckglMap = ({
           updateTriggers: {
             getFillColor: [selectedCounties, colorScale, colorVariable],
           },
+          onClick: (info, event) => console.log('Clicked:', info, event)
         }),
 
         // new GeoJsonLayer({
@@ -306,7 +307,7 @@ const DeckglMap = ({
       <DeckGL
         viewState={viewState}
         onViewStateChange={onViewStateChange}
-        controller={true}
+        controller={{ doubleClickZoom: false, touchRotate: true }}
         // effects={effects}
         layers={[...layers, hoverLayer].filter(Boolean)}
         onHover={onHover}

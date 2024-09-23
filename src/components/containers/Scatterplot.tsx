@@ -47,7 +47,7 @@ function raise<T>(items: T[], raiseIndex: number) {
   return array;
 }
 
-const margin = { top: 10, right: 80, bottom: 50, left: 60 };
+const margin = { top: 10, right: 80, bottom: 60, left: 60 };
 gsap.registerPlugin(useGSAP);
 function drawPoints(
   canvas,
@@ -291,7 +291,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       return coloredAndRaisedData.map((d) => ({
         geoid: d.geoid,
         setRadius: gsap.quickTo(d, "radius", {
-          duration: 0.15,
+          duration: 0.1,
           ease: "power2.inOut",
         }),
       }));
@@ -369,13 +369,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     );
     return (
       <>
-        <canvas
-          ref={backgroundCanvasRef}
-          width={width - margin.left}
-          height={height - margin.top}
-          className="absolute z-10"
-          style={{ top: margin.top + "px", left: margin.left + "px" }}
-        ></canvas>
+     
         <canvas
           ref={foregroundCanvasRef}
           width={width - margin.left}

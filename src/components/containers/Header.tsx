@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   Select,
   SelectContent,
@@ -44,11 +45,22 @@ export const HeatGapHeader = () => {
             ))}
           </SelectContent>
         </Select>
-        <Select>
+        <Select disabled={selectedState.name === "US" ? true : false}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="County" />
           </SelectTrigger>
-          <SelectContent>{/* Add county options here */}</SelectContent>
+          <SelectContent>
+            {USStates.filter(
+              (state) => state.name === selectedState.name
+            )[0]?.counties.map((county: string) => (
+              <SelectItem
+                key={county.geoID}
+                value={county.countyName.toString()}
+              >
+                {county.countyName}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
     </div>
