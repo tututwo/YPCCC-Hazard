@@ -30,7 +30,7 @@ export const HeatGapHeader = () => {
 
   const handleStateChange = (value: string) => {
     setSelectedState(getStateDataViaId(value));
-    setSelectedZoomCounty({ countyName: "County", geoID: "" });
+    setSelectedZoomCounty({ countyName: "", geoID: "" });
     // setKey((prevKey) => prevKey + 1); // was needed for manually trigger second selector to re-render
   };
 

@@ -37,7 +37,7 @@ import { gsap } from "gsap";
 import * as turf from "@turf/turf";
 // import { WebMercatorViewport } from "@deck.gl/core";
 // import calculateStateViewsFromCounties from "@/lib/calculateStateViews";
-import { zoomToWhichState } from "@/lib/calculateStateViews";
+import { zoomToWhichState, zoomToWhichCounty } from "@/lib/calculateStateViews";
 import { useParentSize, ParentSize } from "@visx/responsive";
 // NOTE: Custom UI Components
 import { Scatterplot } from "@/components/containers/Scatterplot";
@@ -96,7 +96,7 @@ export default function Home() {
   const [isDesktop, setIsDesktop] = useState(false);
   // const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
-  // const [zoomToWhichState, setZoomToWhichState] = useState({});
+
   // NOTE: Parent size for the deckgl map
   const { parentRef, width, height } = useParentSize();
 
@@ -151,6 +151,7 @@ export default function Home() {
               width={width}
               height={height}
               zoomToWhichState={zoomToWhichState}
+              zoomToWhichCounty={zoomToWhichCounty}
               geographyData={counties}
               colorVariable={colorVariable}
               xVariable={xVariable}

@@ -26,6 +26,8 @@ import Tooltip from "@/components/ui/tooltip";
 import stateData from "../../../public/us-states.json";
 
 import USMapLayer from "./USMapLayer";
+import { zoomToWhichCounty } from "@/lib/calculateStateViews";
+
 // https://deck.gl/docs/api-reference/carto/basemap
 const CARTO_BASEMAP =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
@@ -68,6 +70,7 @@ const DeckglMap = ({
   width = 975,
   height = 610,
   zoomToWhichState,
+  zoomToWhichCounty,
   geographyData,
   colorVariable,
   xVariable,
@@ -79,9 +82,12 @@ const DeckglMap = ({
 
   const {
     selectedState,
+    setSelectedState,
     colorScale,
     selectedCounties,
     updateSelectedCounties,
+    selectedZoomCounty,
+    setSelectedZoomCounty,
   } = useMapStore();
   const [effects] = useState(() => {
     const lightingEffect = new LightingEffect({ ambientLight, dirLight });
@@ -135,12 +141,30 @@ const DeckglMap = ({
         }),
         transitionDuration: "auto",
         transitionEasing: easeOutExpo,
+        minZoom: 3.2,
+        maxZoom: 10,
       };
       setViewState(newViewState);
     },
     [zoomToWhichState]
   );
-
+  const flyToCounty = useCallback(
+    (countyZoomProps) => {
+      const newViewState = {
+        ...countyZoomProps,
+        transitionInterpolator: new FlyToInterpolator({
+          speed: 0.8,
+          curve: 1,
+        }),
+        transitionDuration: "auto",
+        transitionEasing: easeOutExpo,
+        minZoom: 3.2,
+        maxZoom: 10,
+      };
+      setViewState(newViewState);
+    },
+    [zoomToWhichCounty]
+  );
   useEffect(() => {
     if (selectedState.name === "US") {
       setViewState({
@@ -148,7 +172,7 @@ const DeckglMap = ({
         latitude: 39, // 39.8283
         zoom: 3.1,
         maxZoom: 6.2, // 4.2
-        minZoom: 2.5,
+        minZoom: 3.2,
         pitch: 0,
         bearing: 0,
         transitionInterpolator: new FlyToInterpolator({
@@ -172,11 +196,17 @@ const DeckglMap = ({
   }, [
     selectedState,
     zoomToWhichState,
+    zoomToWhichCounty,
     geographyData,
     flyToState,
     updateSelectedCounties,
   ]);
 
+  useEffect(() => {
+    if (zoomToWhichCounty[selectedZoomCounty.geoID]) {
+      flyToCounty(zoomToWhichCounty[selectedZoomCounty.geoID]);
+    }
+  }, [selectedZoomCounty]);
   // enable color transition
   // useGSAP(
   //   () => {
@@ -242,9 +272,35 @@ const DeckglMap = ({
           updateTriggers: {
             getFillColor: [selectedCounties, colorScale, colorVariable],
           },
-          onClick: (info, event) => console.log('Clicked:', info, event)
-        }),
+          onClick: (info, event) => {
+            setSelectedState({
+              id: +info.object.properties.STATEFP,
+              name: info.object.properties.STATENAME,
+            });
+            setSelectedZoomCounty({
+              geoID: info.object.properties.GEOID,
+              countyName: info.object.properties.NAME,
+            });
 
+            flyToCounty(zoomToWhichCounty[info.object.properties.GEOID]);
+          },
+        }),
+        // highlight clicked county
+        new GeoJsonLayer({
+          id: "highlight-layer",
+          data: geographyData.features.filter(
+            (d) =>
+              d.properties.GEOID.toString() ===
+              selectedZoomCounty.geoID.toString()
+          ),
+          pickable: false,
+          stroked: true,
+          filled: true,
+          getFillColor: [255, 255, 255, 100],
+          getLineColor: [255, 255, 255, 255],
+          getLineWidth: 6,
+          lineWidthUnits: "pixels",
+        }),
         // new GeoJsonLayer({
         //   id: "state-border-layer-white",
         //   data: stateData,
@@ -272,7 +328,14 @@ const DeckglMap = ({
           // lineWidthMaxPixels: 2,
         }),
       ].filter(Boolean),
-    [geographyData, selectedState, colorScale, alphaValues, selectedCounties]
+    [
+      geographyData,
+      selectedState,
+      colorScale,
+      alphaValues,
+      selectedCounties,
+      selectedZoomCounty,
+    ]
   );
 
   const hoverLayer = useMemo(() => {
