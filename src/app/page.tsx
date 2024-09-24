@@ -111,7 +111,6 @@ export default function Home() {
     fetchData();
   }, [fetchData]);
 
-
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 820);
   }, []);
@@ -139,14 +138,11 @@ export default function Home() {
         {/* IMPORTANT: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
         {/* NOTE:Map Section */}
         <section
-          className="w-full min-h-[400px] max-h-[600px]desktop:flex-grow desktop:flex-shrink flex flex-row gap-4"
+          className="w-full min-h-[400px] max-h-[600px] desktop:flex-grow desktop:flex-shrink flex flex-col desktop:flex-row gap-4"
           onMouseEnter={handleMouseLeave}
         >
           {/* NOTE:Actual Map */}
-          <figure
-            ref={parentRef}
-            className="flex-grow h-full relative z-10 "
-          >
+          <figure ref={parentRef} className="flex-grow h-full relative z-10 ">
             <DeckglMap
               width={width}
               height={height}
@@ -179,9 +175,12 @@ export default function Home() {
 
         {/* Table + Plots Section */}
 
-        <section className=" desktop:min-h-[400px] w-full flex-grow flex flex-row gap-2">
+        <section className="min-h-[400px] w-full flex-grow flex flex-col desktop:flex-row gap-2">
           {/* NOTE: Scatterplot */}
-          <div className="mt-4 flex-grow flex flex-col" id="scatterplot-container">
+          <div
+            className="mt-4 flex-grow flex flex-col h-[400px] desktop:h-auto"
+            id="scatterplot-container"
+          >
             <h2 className="text-lg font-bold ml-8">
               Heat worry and Heat rating of all counties
             </h2>
@@ -204,8 +203,7 @@ export default function Home() {
           </div>
 
           <aside className="w-full desktop:w-2/5 flex-shrink-0 pr-1 flex flex-col">
-            
-            <div className="table-container grow overflow-hidden">
+            <div className="table-container grow overflow-hidden max-h-[800px]">
               <ParentSize>
                 {({ width, height }) => {
                   return (
@@ -221,17 +219,12 @@ export default function Home() {
               </ParentSize>
             </div>
 
-<DownloadButton />
-           
+            <DownloadButton />
           </aside>
         </section>
       </main>
 
-      {!isDesktop && (
-        <footer className="p-6">
-          <button className="download-button w-full">Download data</button>
-        </footer>
-      )}
+     
     </>
   );
 }
