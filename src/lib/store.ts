@@ -21,7 +21,14 @@ const createColorScale = () => {
   return scaleQuantize().domain(domain).range(range);
 };
 
+const THE_US_DUMMY_STATE = {
+  id: 0,
+  name: "US",
+  counties: [],
+};
+
 const USStates = [
+  THE_US_DUMMY_STATE,
   {
     id: 10,
     name: "Delaware",
@@ -12758,10 +12765,6 @@ const USStates = [
       },
     ],
   },
-  {
-    id: 0,
-    name: "US",
-  },
 ];
 
 const sortedUSStates = USStates.sort((a, b) => {
@@ -12782,11 +12785,11 @@ type IDatum = {
   isBrushed: boolean;
 };
 
-type IState = { name: string; id: number };
+type IState = { name: string; id: number; counties?: ICounty[] };
 type ICounty = { geoID: string; countyName: string };
 
 const storeState = {
-  selectedState: { id: 0, name: "US" },
+  selectedState: THE_US_DUMMY_STATE as IState,
   selectedZoomCounty: { geoID: "", countyName: "" },
   selectedCounties: [] as ICounty[],
   data: [] as IDatum[],

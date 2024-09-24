@@ -1,30 +1,28 @@
-// @ts-nocheck
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 
 import { useMapStore } from "@/lib/store";
+import { useSearchParams } from "next/navigation";
 
 export const HeatGapHeader = () => {
-  const {
-    USStates,
-    selectedState,
-    setSelectedState,
-    selectedZoomCounty,
-    setSelectedZoomCounty,
-  } = useMapStore();
+  const searchParams = useSearchParams();
+  const state = searchParams.get("state");
+  const county = searchParams.get("county");
+  console.log({ state, county });
+
+  const { USStates, selectedState, setSelectedState, selectedZoomCounty, setSelectedZoomCounty } =
+    useMapStore();
 
   const getStateDataViaId = (id: string) => {
     const state = USStates.find((state) => state.id.toString() === id);
     return {
-      id: state.id,
-      name: state.name,
+      id: state!.id,
+      name: state!.name,
     };
   };
 
@@ -36,7 +34,7 @@ export const HeatGapHeader = () => {
 
   const handleCountyChange = (value: string) => {
     const selectedCountyData = USStates.find(
-      (state) => state.name === selectedState.name
+      (state) => state?.name === selectedState.name
     )?.counties.find((county) => county.geoID.toString() === value);
 
     if (selectedCountyData) {
@@ -52,10 +50,7 @@ export const HeatGapHeader = () => {
       <div className="flex items-center space-x-4">
         <h2 className="text-2xl font-bold text-blue-900">Heat gap</h2>
         <span className="text-gray-600">in</span>
-        <Select
-          defaultValue={selectedState.name}
-          onValueChange={handleStateChange}
-        >
+        <Select defaultValue={selectedState.name} onValueChange={handleStateChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue>{selectedState.name}</SelectValue>
           </SelectTrigger>
@@ -79,8 +74,7 @@ export const HeatGapHeader = () => {
           </SelectTrigger>
           <SelectContent>
             {USStates.find(
-              (state) =>
-                state.name === selectedState.name && state.name !== "US"
+              (state) => state.name === selectedState.name && state.name !== "US"
             )?.counties.map((county) => (
               <SelectItem key={county.geoID} value={county.geoID.toString()}>
                 {county.countyName}
