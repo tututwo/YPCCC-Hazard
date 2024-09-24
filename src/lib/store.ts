@@ -1,4 +1,4 @@
-import { useStore, createStore } from "zustand";
+import { useStore, createStore, type StoreApi } from "zustand";
 import { scaleQuantize } from "d3-scale";
 import { csv } from "d3-fetch";
 
@@ -12785,7 +12785,7 @@ type IDatum = {
 type IState = { name: string; id: number };
 type ICounty = { geoID: string; countyName: string };
 
-const state = {
+const storeState = {
   selectedState: { id: 0, name: "US" },
   selectedZoomCounty: { geoID: "", countyName: "" },
   selectedCounties: [] as ICounty[],
@@ -12794,9 +12794,13 @@ const state = {
   colorScale: createColorScale(),
 };
 
-type MapState = typeof state;
-const store = createStore<MapState>((set, get) => ({
-  ...state,
+type IMapState = typeof storeState;
+const createActions = (
+  set: StoreApi<IMapState>["setState"],
+  get: StoreApi<IMapState>["getState"],
+  _store: StoreApi<IMapState>
+) => ({
+  ...({} as IMapState),
   setSelectedState: (state: IState) => {
     set({ selectedState: state });
     const { data } = get();
@@ -12825,6 +12829,12 @@ const store = createStore<MapState>((set, get) => ({
     const filtered = stateName === "US" ? data : data.filter((d) => d.state === stateName);
     set({ filteredData: filtered });
   },
+});
+
+type IActions = ReturnType<typeof createActions>;
+const store = createStore<IMapState & IActions>((set, get, store) => ({
+  ...storeState,
+  ...createActions(set, get, store),
 }));
 
 export const useMapStore = () => useStore(store);
