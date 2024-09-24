@@ -1,18 +1,6 @@
-import { create } from "zustand";
+import { useStore, createStore } from "zustand";
 import { scaleQuantize } from "d3-scale";
 import { csv } from "d3-fetch";
-
-interface MapState {
-  selectedState: { id: number; name: string };
-  selectedCounties: string[];
-  colorScale: (value: number) => string;
-  data: any[]; // Add this line
-  filteredData: any[]; // Add this line
-  setSelectedState: (state: { id: number; name: string }) => void;
-  updateSelectedCounties: (counties: string[]) => void;
-  fetchData: () => Promise<void>; // Add this line
-  filterDataByState: (stateName: string) => void; // Add this line
-}
 
 const createColorScale = () => {
   const domain = [-1, 1]; // Min and max of your domain
@@ -29,6 +17,7 @@ const createColorScale = () => {
     "#AE1C3E",
   ];
 
+  // @ts-ignore
   return scaleQuantize().domain(domain).range(range);
 };
 
@@ -12774,6 +12763,7 @@ const USStates = [
     name: "US",
   },
 ];
+
 const sortedUSStates = USStates.sort((a, b) => {
   // Always keep "US" at the top
   if (a.name === "US") return -1;
@@ -12782,28 +12772,45 @@ const sortedUSStates = USStates.sort((a, b) => {
   // For all other states, sort alphabetically
   return a.name.localeCompare(b.name);
 });
-export const useMapStore = create<MapState>((set, get) => ({
+
+type IDatum = {
+  state: string;
+  xValue: number;
+  yValue: number;
+  gap: number;
+  radius: number;
+  isBrushed: boolean;
+};
+
+type IState = { name: string; id: number };
+type ICounty = { geoID: string; countyName: string };
+
+const state = {
   selectedState: { id: 0, name: "US" },
-  selectedCounties: [],
   selectedZoomCounty: { geoID: "", countyName: "" },
-  data: [],
-  filteredData: [],
+  selectedCounties: [] as ICounty[],
+  data: [] as IDatum[],
+  filteredData: [] as IDatum[],
   colorScale: createColorScale(),
-  setSelectedState: (state) => {
+};
+
+type MapState = typeof state;
+const store = createStore<MapState>((set, get) => ({
+  ...state,
+  setSelectedState: (state: IState) => {
     set({ selectedState: state });
     const { data } = get();
-    const filtered =
-      state.name === "US" ? data : data.filter((d) => d.state === state.name);
+    const filtered = state.name === "US" ? data : data.filter((d) => d.state === state.name);
     set({ filteredData: filtered });
   },
-  setSelectedZoomCounty: (county) => {
+  setSelectedZoomCounty: (county: ICounty) => {
     set({ selectedZoomCounty: county });
   },
-  updateSelectedCounties: (counties) => set({ selectedCounties: counties }),
+  updateSelectedCounties: (counties: ICounty[]) => set({ selectedCounties: counties }),
   USStates: sortedUSStates,
   fetchData: async () => {
     const loadedData = await csv("/data.csv");
-    const processedData = loadedData.map((d) => ({
+    const processedData: any[] = loadedData.map((d) => ({
       ...d,
       xValue: +d.xValue,
       yValue: +d.yValue,
@@ -12813,10 +12820,11 @@ export const useMapStore = create<MapState>((set, get) => ({
     }));
     set({ data: processedData, filteredData: processedData });
   },
-  filterDataByState: (stateName) => {
+  filterDataByState: (stateName: string) => {
     const { data } = get();
-    const filtered =
-      stateName === "US" ? data : data.filter((d) => d.state === stateName);
+    const filtered = stateName === "US" ? data : data.filter((d) => d.state === stateName);
     set({ filteredData: filtered });
   },
 }));
+
+export const useMapStore = () => useStore(store);
