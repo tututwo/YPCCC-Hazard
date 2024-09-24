@@ -92,7 +92,8 @@ gsap.registerPlugin(useGSAP);
 //   { ssr: false }
 // );
 export default function Home() {
-  const { data, filteredData, fetchData } = useMapStore();
+  const { data, filteredData } = useMapStore();
+
   const [isDesktop, setIsDesktop] = useState(false);
   // const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -107,9 +108,6 @@ export default function Home() {
   const handleMouseLeave = useCallback(() => {
     setIsExpanded(false);
   }, []);
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 820);
@@ -181,9 +179,7 @@ export default function Home() {
             className="mt-4 flex-grow flex flex-col h-[400px] desktop:h-auto"
             id="scatterplot-container"
           >
-            <h2 className="text-lg font-bold ml-8">
-              Heat worry and Heat rating of all counties
-            </h2>
+            <h2 className="text-lg font-bold ml-8">Heat worry and Heat rating of all counties</h2>
             <figure className="w-full flex-grow">
               <ParentSize>
                 {({ width, height, top, left }) => {
@@ -223,8 +219,6 @@ export default function Home() {
           </aside>
         </section>
       </main>
-
-     
     </>
   );
 }

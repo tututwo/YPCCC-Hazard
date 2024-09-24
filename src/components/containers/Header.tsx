@@ -7,14 +7,8 @@ import {
 } from "@/components/ui/select";
 
 import { useMapStore } from "@/lib/store";
-import { useSearchParams } from "next/navigation";
 
 export const HeatGapHeader = () => {
-  const searchParams = useSearchParams();
-  const state = searchParams.get("state");
-  const county = searchParams.get("county");
-  console.log({ state, county });
-
   const { USStates, selectedState, setSelectedState, selectedZoomCounty, setSelectedZoomCounty } =
     useMapStore();
 

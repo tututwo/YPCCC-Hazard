@@ -12785,48 +12785,41 @@ type IDatum = {
   isBrushed: boolean;
 };
 
-type IState = { name: string; id: number; counties?: ICounty[] };
-type ICounty = { geoID: string; countyName: string };
+// do not confuse "US State" with "store state"
+type US_State = { name: string; id: number; counties?: County[] };
+type County = { geoID: string; countyName: string };
 
-const storeState = {
-  selectedState: THE_US_DUMMY_STATE as IState,
+type IState = typeof state;
+type IStoreState = ReturnType<typeof initializeStore>;
+
+const state = {
+  selectedState: THE_US_DUMMY_STATE as US_State,
   selectedZoomCounty: { geoID: "", countyName: "" },
-  selectedCounties: [] as ICounty[],
+  selectedCounties: [] as County[],
   data: [] as IDatum[],
   filteredData: [] as IDatum[],
   colorScale: createColorScale(),
+  USStates: sortedUSStates,
 };
 
-type IMapState = typeof storeState;
-const createActions = (
-  set: StoreApi<IMapState>["setState"],
-  get: StoreApi<IMapState>["getState"],
-  _store: StoreApi<IMapState>
+const initializeStore = (
+  set: StoreApi<IState>["setState"],
+  get: StoreApi<IState>["getState"],
+  _store: StoreApi<IState>
 ) => ({
-  ...({} as IMapState),
-  setSelectedState: (state: IState) => {
-    set({ selectedState: state });
+  ...state,
+  setSelectedState: (state: US_State) => {
     const { data } = get();
     const filtered = state.name === "US" ? data : data.filter((d) => d.state === state.name);
-    set({ filteredData: filtered });
+    set({ filteredData: filtered, selectedState: state });
   },
-  setSelectedZoomCounty: (county: ICounty) => {
+
+  setSelectedZoomCounty: (county: County) => {
     set({ selectedZoomCounty: county });
   },
-  updateSelectedCounties: (counties: ICounty[]) => set({ selectedCounties: counties }),
-  USStates: sortedUSStates,
-  fetchData: async () => {
-    const loadedData = await csv("/data.csv");
-    const processedData: any[] = loadedData.map((d) => ({
-      ...d,
-      xValue: +d.xValue,
-      yValue: +d.yValue,
-      gap: +d.gap,
-      radius: 3,
-      isBrushed: false,
-    }));
-    set({ data: processedData, filteredData: processedData });
-  },
+
+  updateSelectedCounties: (counties: County[]) => set({ selectedCounties: counties }),
+
   filterDataByState: (stateName: string) => {
     const { data } = get();
     const filtered = stateName === "US" ? data : data.filter((d) => d.state === stateName);
@@ -12834,10 +12827,98 @@ const createActions = (
   },
 });
 
-type IActions = ReturnType<typeof createActions>;
-const store = createStore<IMapState & IActions>((set, get, store) => ({
-  ...storeState,
-  ...createActions(set, get, store),
-}));
+const mapStore = createStore<IStoreState>(initializeStore);
+export const useMapStore = (selector: (state: IStoreState) => IStoreState = (x) => x) => {
+  return useStore(mapStore, selector);
+};
 
-export const useMapStore = () => useStore(store);
+// #region
+// initialize store data
+let initialized = false;
+
+reloadMapStoreData();
+
+export async function reloadMapStoreData() {
+  const loadedData = await csv("/data.csv");
+  const processedData: any[] = loadedData.map((d) => ({
+    ...d,
+    xValue: +d.xValue,
+    yValue: +d.yValue,
+    gap: +d.gap,
+    radius: 3,
+    isBrushed: false,
+  }));
+  mapStore.setState({ data: processedData, filteredData: processedData });
+  initSyncSearchParams();
+}
+
+// initialize, load data and sync url search params to store once.
+function initSyncSearchParams() {
+  if (initialized) return;
+
+  const searchParams = window.location.search;
+  const newSearchParams = new URLSearchParams(searchParams);
+  const params = Object.fromEntries(newSearchParams.entries());
+  syncSearchParamsToStore(params as any);
+  initialized = true;
+}
+
+// store update will also update the url search params
+mapStore.subscribe(({ selectedState, selectedZoomCounty }) => {
+  if (!initialized) return;
+
+  const update = {
+    state: selectedState?.id?.toString() || null,
+    county: selectedZoomCounty?.geoID || null,
+  };
+  updateSearchParams(update);
+});
+
+const REGEX_NUMBER = /^\d+$/;
+export function syncSearchParamsToStore(params: { state: string; county: string }) {
+  let { data, filteredData, selectedState, selectedZoomCounty } = mapStore.getState();
+
+  if (REGEX_NUMBER.test(params.state)) {
+    const found = sortedUSStates.find((s) => s.id === +params.state);
+    if (found) {
+      const filtered =
+        selectedState.name === "US" ? data : data.filter((d) => d.state === selectedState.name);
+      filteredData = filtered;
+      selectedState = found;
+    }
+  }
+
+  if (REGEX_NUMBER.test(params.county)) {
+    const found = selectedState?.counties?.find((c) => c.geoID === params.county);
+    if (found) selectedZoomCounty = found;
+  }
+
+  // must use mapStore.setState to update, do not use actions, otherwise might go out-of-sync
+  mapStore.setState({ selectedState, selectedZoomCounty, filteredData });
+}
+
+export function updateSearchParams(params: Record<string, string | null>) {
+  const searchParams = window.location.search;
+  const newSearchParams = new URLSearchParams(searchParams);
+  let changed = false;
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null) {
+      if (newSearchParams.has(key)) {
+        newSearchParams.delete(key);
+        changed = true;
+      }
+    } else {
+      if (newSearchParams.has(key) && newSearchParams.get(key) === value) {
+        return;
+      }
+      newSearchParams.set(key, value);
+      changed = true;
+    }
+  });
+  if (changed) {
+    const newPathname = `${window.location.pathname}?${newSearchParams.toString()}`;
+    window.history.pushState(null, "", newPathname);
+  }
+}
+
+// #endregion
