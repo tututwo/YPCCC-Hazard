@@ -11,18 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import {
-  FireIcon,
-  LifebuoyIcon,
-  Bars2Icon,
-  CloudIcon,
-  SunIcon,
-} from "@heroicons/react/24/outline";
-export default function ExpandableSection({
-  isExpanded,
-  isDesktop,
-  categories,
-}) {
+import { FireIcon, LifebuoyIcon, Bars2Icon, CloudIcon, SunIcon } from "@heroicons/react/24/outline";
+export default function ExpandableSection({ isExpanded, isDesktop, categories }) {
   const [expandedCategory, setExpandedCategory] = useState("Heat");
   const [selectedSubcategory, setSelectedSubcategory] = useState("Heat gap");
   const buttonRefs = useRef([]);
@@ -30,9 +20,7 @@ export default function ExpandableSection({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef(null);
   const toggleCategory = (categoryName) => {
-    setExpandedCategory(
-      expandedCategory === categoryName ? null : categoryName
-    );
+    setExpandedCategory(expandedCategory === categoryName ? null : categoryName);
   };
   const handleSubcategoryClick = (subcategory, index) => {
     setSelectedSubcategory(subcategory);
@@ -44,22 +32,17 @@ export default function ExpandableSection({
       <nav
         aria-label="Sidebar"
         className={`
-            overflow-hidden
-            absolute
-          
-         order-1 flex-grow-0 flex-shrink-0
-       border-gray-200
-       text-white
-     z-[111] 
-        w-60 h-full transition-all duration-[800] ease-in-out
-        space-y-4
-         px-4 flex flex-col
-        ${
-          isExpanded
-            ? "translate-x-0 opacity-100"
-            : "-translate-x-full opacity-0"
-        }
-      `}
+          overflow-hidden
+          absolute
+          order-1 flex-grow-0 flex-shrink-0
+          border-gray-200
+          text-white
+          z-[40] 
+          w-60 h-full transition-all duration-[800] ease-in-out
+          space-y-4
+          px-4 flex flex-col
+          ${isExpanded ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"}
+        `}
         aria-hidden={!isExpanded}
       >
         <div id="sidebar-background"></div>
@@ -85,10 +68,7 @@ export default function ExpandableSection({
 
         {isDesktop && (
           <>
-            <div
-              className="flex-grow flex flex-col justify-between"
-              id="sidebar-content"
-            >
+            <div className="flex-grow flex flex-col justify-between" id="sidebar-content">
               <section className="mb-4">
                 {categories.map((category, i) => (
                   <div key={category.name} className="overflow-hidden ">
@@ -105,9 +85,7 @@ export default function ExpandableSection({
                           case "storm":
                             return <CloudIcon className="size-6" />;
                           case "flood":
-                            return (
-                              <LifebuoyIcon className="size-6" />
-                            );
+                            return <LifebuoyIcon className="size-6" />;
                           case "drought":
                             return <SunIcon className="size-6" />;
                           default:
@@ -152,9 +130,7 @@ export default function ExpandableSection({
                         {category.subcategories.map((subcategory, index) => (
                           <li key={subcategory} className="relative">
                             <button
-                              onClick={() =>
-                                handleSubcategoryClick(subcategory, index)
-                              }
+                              onClick={() => handleSubcategoryClick(subcategory, index)}
                               className={`w-full text-left text-xs p-2 whitespace-pre hover:cursor-pointer relative z-10 ${
                                 selectedSubcategory === subcategory
                                   ? "text-white"
