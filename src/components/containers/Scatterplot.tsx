@@ -39,13 +39,6 @@ const tickLabelProps = {
 };
 let tooltipTimeout: number;
 const twoSigFigFormatter = d3.format(".2r");
-function raise<T>(items: T[], raiseIndex: number) {
-  const array = [...items];
-  const lastIndex = array.length - 1;
-  const [raiseItem] = array.splice(raiseIndex, 1);
-  array.splice(lastIndex, 0, raiseItem);
-  return array;
-}
 
 const margin = { top: 10, right: 80, bottom: 60, left: 60 };
 gsap.registerPlugin(useGSAP);
@@ -122,6 +115,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     tooltipTop,
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
+    const brushRef = useRef<any>(null);
     const foregroundCanvasRef = useRef(null);
     const backgroundCanvasRef = useRef(null);
 
@@ -136,7 +130,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       Set<string>
     >(new Set());
     // FIXME: This is really slow. Improve it
-    const [hoveredPointId, setHoveredPointId] = useState(false);
+    const [hoveredPoint, setHoveredPoint] = useState(null);
     const {
       selectedState,
       setSelectedState,
@@ -183,7 +177,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       // }
 
       return result;
-    }, [coloredData, hoveredPointId]);
+    }, [coloredData]);
 
     const { contextSafe } = useGSAP(
       // draw foreground canvas
@@ -212,70 +206,48 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     // // // // // // // // // // // // // // // // // //
     // // // // // // // // Tooltip // // // // // // // //
     // // // // // // // // // // // // // // // // // //
-    const voronoiLayout = useMemo(() => {
-      return voronoi<PointsRange>({
-        x: (d) => x(d[xVariable]) ?? 0,
-        y: (d) => y(d[yVariable]) ?? 0,
-        width: width - margin.left,
-        height: innerHeight,
-      })(coloredAndRaisedData);
-    }, [
-      innerWidth,
-      innerHeight,
-      x,
-      y,
-      xVariable,
-      yVariable,
-      coloredAndRaisedData,
-    ]);
+    const delaunay = useMemo(() => {
+      return Delaunay.from(
+        coloredAndRaisedData,
+        (d) => x(d[xVariable]),
+        (d) => y(d[yVariable])
+      );
+    }, [coloredAndRaisedData, x, y, xVariable, yVariable]);
+
+    const voronoi = useMemo(() => {
+      return delaunay.voronoi([0, 0, width, height]);
+    }, [delaunay, width, height]);
 
     const handleMouseMove = useCallback(
-      (event: React.MouseEvent | React.TouchEvent) => {
-        if (!svgRef.current) return;
+      (event) => {
+        const point = localPoint(event);
 
-        const point = localPoint(svgRef.current, event);
+        if (point) {
+          const { x, y } = point;
+          const index = delaunay.find(x - margin.left, y - margin.top);
 
-        if (!point) return;
-        const neighborRadius = 100;
-        // Adjust the point coordinates to account for the margin
-        const adjustedPoint = {
-          x: point.x - margin.left,
-          y: point.y - margin.top,
-        };
-        const closest = voronoiLayout.find(
-          adjustedPoint.x,
-          adjustedPoint.y,
-          neighborRadius
-        );
+          if (index !== undefined && index !== -1) {
+            const datum = coloredAndRaisedData[index];
+            setHoveredPoint(datum);
 
-        if (closest && !isBrushing) {
-          // setHoveredPointId(closest.data.geoid);
-          showTooltip({
-            tooltipLeft: x(closest.data[xVariable]) + margin.left,
-            tooltipTop: y(closest.data[yVariable]) + margin.top,
-            tooltipData: closest.data,
-          });
-        } else {
-          // setHoveredPointId(null);
-          hideTooltip();
+            // Optionally, show the tooltip
+            showTooltip({
+              tooltipLeft: x,
+              tooltipTop: y,
+              tooltipData: datum,
+            });
+          } else {
+            setHoveredPoint(null);
+            hideTooltip();
+          }
         }
       },
-      [
-        voronoiLayout,
-        isBrushing,
-        x,
-        y,
-        xVariable,
-        yVariable,
-        showTooltip,
-        hideTooltip,
-      ]
+      [delaunay, coloredAndRaisedData, showTooltip, hideTooltip, margin]
     );
 
     const handleMouseLeave = useCallback(() => {
-      tooltipTimeout = window.setTimeout(() => {
-        hideTooltip();
-      }, 300);
+      setHoveredPoint(null);
+      hideTooltip();
     }, [hideTooltip]);
 
     const handleMouseDown = useCallback(() => {
@@ -357,19 +329,66 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       setBrushedCircles(selectedPointsSet);
       updateSelectedCounties(Array.from(selectedPointsSet));
     });
+
+    const handleCanvasClick = useCallback(() => {
+      // Reset the brushed state
+      coloredAndRaisedData.forEach((d) => {
+        d.isBrushed = false;
+        d.radius = 3; // Reset radius to initial value
+      });
+
+      // Clear previous brushed items
+      prevBrushedItems.current.clear();
+
+      // Kill all GSAP animations related to data points
+      gsap.killTweensOf(coloredAndRaisedData);
+
+      // Update state to reflect no selection
+      setCurrentBrushSelection(new Set());
+      setBrushedCircles(new Set());
+      updateSelectedCounties([]);
+
+      // Redraw the canvas
+      drawPoints(
+        foregroundCanvasRef.current,
+        coloredAndRaisedData,
+        selectedCounties,
+        xVariable,
+        yVariable,
+        colorVariable,
+        x,
+        y,
+        colorScale
+      );
+    }, [
+      coloredAndRaisedData,
+      selectedCounties,
+      xVariable,
+      yVariable,
+      colorVariable,
+      x,
+      y,
+      colorScale,
+      setCurrentBrushSelection,
+      setBrushedCircles,
+      updateSelectedCounties,
+      foregroundCanvasRef,
+    ]);
+
     const selectedBoxStyle = useMemo(
       () => ({
         fill: "#A7BDD3",
-        fillOpacity: selectedState.id === 0 ? 0.08 : 0,
+        // fillOpacity: selectedState.id === 0 ? 0.08 : 0,
+        fillOpacity: 0.08,
         stroke: "#12375A",
         strokeWidth: 1,
-        strokeOpacity: selectedState.id === 0 ? 0.8 : 0,
+        // strokeOpacity: selectedState.id === 0 ? 0.8 : 0,
+        strokeOpacity: 0.8,
       }),
       [selectedState]
     );
     return (
       <>
-     
         <canvas
           ref={foregroundCanvasRef}
           width={width - margin.left}
@@ -432,9 +451,12 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             maxHeight: height,
             cursor: isBrushing ? "crosshair" : "pointer",
           }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
         >
           <Group left={margin.left} top={margin.top}>
             <Brush
+              ref={brushRef}
               xScale={x}
               yScale={y}
               width={width - margin.left}
@@ -444,13 +466,23 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
               resizeTriggerAreas={["left", "right", "top", "bottom", "center"]}
               brushDirection="both"
               initialBrushPosition={null}
+              onClick={handleCanvasClick}
               onChange={handleBrushChange}
               onBrushStart={handleMouseDown}
               onBrushEnd={handleMouseUp}
-              onMouseLeave={handleMouseLeave}
               useWindowMoveEvents
               selectedBoxStyle={selectedBoxStyle}
             />
+            {hoveredPoint && (
+              <circle
+                cx={x(hoveredPoint[xVariable])}
+                cy={y(hoveredPoint[yVariable])}
+                r={hoveredPoint.radius * 1.4}
+                fill="white"
+                stroke={colorScale(hoveredPoint[colorVariable])}
+                strokeWidth={2}
+              />
+            )}
           </Group>
         </svg>
         {/* FIXME: This is expensive calculation */}
@@ -459,7 +491,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           tooltipLeft != null &&
           tooltipTop != null && (
             <Tooltip
-              left={tooltipLeft + margin.left}
+              left={tooltipLeft}
               top={tooltipTop + margin.top}
               county={tooltipData.County_name}
               state={tooltipData.state}
