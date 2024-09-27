@@ -125,10 +125,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const yMax = height - margin.bottom;
     const [isBrushing, setIsBrushing] = useState(false);
 
-    const [brushedCircles, setBrushedCircles] = useState(new Set<string>());
-    const [currentBrushSelection, setCurrentBrushSelection] = useState<
-      Set<string>
-    >(new Set());
     // FIXME: This is really slow. Improve it
     const [hoveredPoint, setHoveredPoint] = useState(null);
     const {
@@ -257,7 +253,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
     const handleMouseUp = useCallback(() => {
       // setIsBrushing(false);
-    }, [currentBrushSelection]); // Add dependencies here
+    }, []); // Add dependencies here
 
     const radiusQuickSetters = useMemo(() => {
       return coloredAndRaisedData.map((d) => ({
@@ -268,7 +264,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         }),
       }));
     }, [coloredAndRaisedData]);
-    const prevBrushedItems = useRef<Set<string>>(new Set());
+
     const handleBrushChange = contextSafe((domain: Bounds | null) => {
       if (!domain) return;
 
@@ -281,9 +277,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
           d[xVariable] <= x1 &&
           d[yVariable] >= y0 &&
           d[yVariable] <= y1;
-
-        // Determine if the item was previously brushed
-        const wasBrushed = prevBrushedItems.current.has(d.geoid);
 
         d.isBrushed = isBrushed;
 
@@ -321,12 +314,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         // }
       });
 
-      // Update prevBrushedItems after handling all data points
-      prevBrushedItems.current = selectedPointsSet;
-
       // Update state
-      setCurrentBrushSelection(selectedPointsSet);
-      setBrushedCircles(selectedPointsSet);
+
       updateSelectedCounties(Array.from(selectedPointsSet));
     });
 
@@ -337,14 +326,11 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         d.radius = 3; // Reset radius to initial value
       });
 
-      // Clear previous brushed items
-      prevBrushedItems.current.clear();
-
       // Kill all GSAP animations related to data points
       gsap.killTweensOf(coloredAndRaisedData);
 
       // Update state to reflect no selection
-      setCurrentBrushSelection(new Set());
+
       setBrushedCircles(new Set());
       updateSelectedCounties([]);
 
@@ -369,8 +355,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       x,
       y,
       colorScale,
-      setCurrentBrushSelection,
-      setBrushedCircles,
+
       updateSelectedCounties,
       foregroundCanvasRef,
     ]);
