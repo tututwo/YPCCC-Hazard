@@ -30,6 +30,13 @@ import Brush from "./brush-components/Brush";
 import Tooltip from "@/components/ui/tooltip";
 // Add these constants for your color scales
 
+// NOTE: R3F
+import { Canvas } from "@react-three/fiber";
+
+import { OrbitControls } from "@react-three/drei";
+import { Particles } from "./scatterplot-r3f/Scatterplot-R3f";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+
 const tickLabelProps = {
   fill: "#222",
   fontFamily: "Roboto",
@@ -42,62 +49,62 @@ const twoSigFigFormatter = d3.format(".2r");
 
 const margin = { top: 10, right: 80, bottom: 60, left: 60 };
 gsap.registerPlugin(useGSAP);
-function drawPoints(
-  canvas,
-  dataset,
-  selectedCounties,
-  xVariable,
-  yVariable,
-  colorVariable,
-  xScale,
-  yScale,
-  colorScale
-) {
-  const ctx = canvas.getContext("2d");
+// function drawPoints(
+//   canvas,
+//   dataset,
+//   selectedCounties,
+//   xVariable,
+//   yVariable,
+//   colorVariable,
+//   xScale,
+//   yScale,
+//   colorScale
+// ) {
+//   const ctx = canvas.getContext("2d");
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  dataset.forEach((d) => {
-    const isHighlighted = d.isBrushed || selectedCounties.includes(d.geoid);
+//   ctx.clearRect(0, 0, canvas.width, canvas.height);
+//   dataset.forEach((d) => {
+//     const isHighlighted = d.isBrushed || selectedCounties.includes(d.geoid);
 
-    // NOTE: Larger circle
-    if (isHighlighted) {
-      ctx.beginPath();
-      // circle merge?
-      ctx.arc(
-        xScale(d[xVariable]),
-        yScale(d[yVariable]),
-        d.radius * 1.4,
-        0,
-        2 * Math.PI
-      );
-      ctx.fillStyle = "white";
-      ctx.fill();
-      ctx.strokeStyle = colorScale(d[colorVariable]);
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-    // NOTE: Smaller circle
+//     // NOTE: Larger circle
+//     if (isHighlighted) {
+//       ctx.beginPath();
+//       // circle merge?
+//       ctx.arc(
+//         xScale(d[xVariable]),
+//         yScale(d[yVariable]),
+//         d.radius * 1.4,
+//         0,
+//         2 * Math.PI
+//       );
+//       ctx.fillStyle = "white";
+//       ctx.fill();
+//       ctx.strokeStyle = colorScale(d[colorVariable]);
+//       ctx.lineWidth = 2;
+//       ctx.stroke();
+//     }
+//     // NOTE: Smaller circle
 
-    // ctx.globalCompositeOperation = "screen";
-    ctx.globalAlpha = isHighlighted ? 1 : 0.8;
-    ctx.beginPath();
-    ctx.arc(
-      xScale(d[xVariable]),
-      yScale(d[yVariable]),
-      d.radius,
-      0,
-      2 * Math.PI
-    );
-    ctx.fillStyle = colorScale(d[colorVariable]);
-    ctx.fill();
-    // FIXME: This produce a merging effect
-    // ctx.fillStyle = "white";
-    // ctx.fill();
-    // ctx.strokeStyle = "black";
-    // ctx.lineWidth = 2;
-    // ctx.stroke();
-  });
-}
+//     // ctx.globalCompositeOperation = "screen";
+//     ctx.globalAlpha = isHighlighted ? 1 : 0.8;
+//     ctx.beginPath();
+//     ctx.arc(
+//       xScale(d[xVariable]),
+//       yScale(d[yVariable]),
+//       d.radius,
+//       0,
+//       2 * Math.PI
+//     );
+//     ctx.fillStyle = colorScale(d[colorVariable]);
+//     ctx.fill();
+//     // FIXME: This produce a merging effect
+//     // ctx.fillStyle = "white";
+//     // ctx.fill();
+//     // ctx.strokeStyle = "black";
+//     // ctx.lineWidth = 2;
+//     // ctx.stroke();
+//   });
+// }
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   ({
     data,
@@ -140,7 +147,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       () =>
         scaleLinear<number>({
           domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
-          range: [margin.left, width - margin.right],
+          range: [-200, 200],
           clamp: false,
         }),
       [data, width]
@@ -149,7 +156,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       () =>
         scaleLinear<number>({
           domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
-          range: [height - margin.bottom, margin.top],
+          range: [-100, 100],
           clamp: false,
         }),
       [data, height]
@@ -178,23 +185,23 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const { contextSafe } = useGSAP(
       // draw foreground canvas
       () => {
-        const drawCanvas = () => {
-          drawPoints(
-            foregroundCanvasRef.current,
-            coloredAndRaisedData,
-            selectedCounties,
-            xVariable,
-            yVariable,
-            colorVariable,
-            x,
-            y,
-            colorScale
-          );
-        };
-        gsap.ticker.add(drawCanvas);
-        return () => {
-          gsap.ticker.remove(drawCanvas);
-        };
+        // const drawCanvas = () => {
+        //   drawPoints(
+        //     foregroundCanvasRef.current,
+        //     coloredAndRaisedData,
+        //     selectedCounties,
+        //     xVariable,
+        //     yVariable,
+        //     colorVariable,
+        //     x,
+        //     y,
+        //     colorScale
+        //   );
+        // };
+        // gsap.ticker.add(drawCanvas);
+        // return () => {
+        //   gsap.ticker.remove(drawCanvas);
+        // };
       },
       { dependencies: [coloredAndRaisedData, width, height] }
     );
@@ -374,13 +381,35 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     );
     return (
       <>
-        <canvas
-          ref={foregroundCanvasRef}
-          width={width - margin.left}
-          height={height - margin.top}
-          className="absolute z-10"
-          style={{ top: margin.top + "px", left: margin.left + "px" }}
-        ></canvas>
+        <Canvas
+          camera={{
+            fov: 45,
+            near: 0.1,
+            far: 500,
+            position: [0, 0, 220],
+          }}
+          style={{ background: "transparent", position: "absolute" }}
+        >
+          {/* <color attach="background" args={["black"]} /> */}
+          <OrbitControls makeDefault />
+          <Particles
+            data={data}
+            xScale={x}
+            yScale={y}
+            xVariable={xVariable}
+            yVariable={yVariable}
+            colorVariable={colorVariable}
+          />
+          <axesHelper args={[100]} />
+          {/* <EffectComposer>
+            <Bloom
+              luminanceThreshold={0.1}
+              intensity={0.1}
+              levels={9}
+              mipmapBlur
+            />
+          </EffectComposer> */}
+        </Canvas>
         <svg
           width={width}
           className="absolute  h-full"
