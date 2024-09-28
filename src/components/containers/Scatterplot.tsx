@@ -90,12 +90,6 @@ function drawPoints(
     );
     ctx.fillStyle = colorScale(d[colorVariable]);
     ctx.fill();
-    // FIXME: This produce a merging effect
-    // ctx.fillStyle = "white";
-    // ctx.fill();
-    // ctx.strokeStyle = "black";
-    // ctx.lineWidth = 2;
-    // ctx.stroke();
   });
 }
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
@@ -290,28 +284,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         if (isBrushed) {
           selectedPointsSet.add(d.geoid);
         }
-        // if (isBrushed) {
-        //   selectedPointsSet.add(d.geoid);
-        //   // Use quickTo to set radius to 6 for brushed items
-        //   if (quickSetter) {
-        //     quickSetter.setRadius(6);
-        //   }
-        // } else {
-        //   // If the item was previously brushed and is now unbrushed, trigger exit animation
-        //   if (wasBrushed) {
-        //     // Start GSAP tween from current radius to 3
-        //     gsap.to(d, {
-        //       radius: 3,
-        //       duration: 0.5,
-        //       ease: "power2.inOut",
-        //     });
-        //   } else {
-        //     // For unbrushed items that were not previously brushed, ensure radius is 3
-        //     if (d.radius !== 3 && quickSetter) {
-        //       quickSetter.setRadius(3);
-        //     }
-        //   }
-        // }
       });
 
       // Update state
@@ -436,8 +408,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             maxHeight: height,
             cursor: isBrushing ? "crosshair" : "pointer",
           }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+       
         >
           <Group left={margin.left} top={margin.top}>
             <Brush
