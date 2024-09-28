@@ -30,11 +30,14 @@ void main() {
 //   // 点の中心からの距離を元に透明度を指定し、丸くする
 //   // float alpha = 1. - smoothstep(0.4995, 0.5005, length(gl_PointCoord - vec2(0.5)));
 //   // gl_FragColor = vec4(vColor, 1.0);
-  
+
 // }
 //   `;
 
 export const fragmentShader = `
+float smoothedge(float edge, float x) {
+  return smoothstep(edge - 0.5, edge + 0.5, x);
+}
 varying vec3 vColor;
 
 void main() {
@@ -81,10 +84,11 @@ export const Particles = ({
     updateSelectedCounties,
   } = useMapStore();
 
-  const { positions, colors } = useMemo(() => {
+  const { positions, colors, radii } = useMemo(() => {
     const dataLength = data.length;
     const positions = new Float32Array(dataLength * 3);
     const colors = new Float32Array(dataLength * 3);
+    const radii = new Float32Array(dataLength);
     const x = xScale.copy().range([-200, 200]);
     const y = yScale.copy().range([-100, 100]);
     for (let i = 0; i < dataLength; i++) {
@@ -98,9 +102,11 @@ export const Particles = ({
       colors[i3] = color.r / 255;
       colors[i3 + 1] = color.g / 255;
       colors[i3 + 2] = color.b / 255;
+
+      radii[i] = 10.0; // Set the desired radius
     }
 
-    return { positions, colors };
+    return { positions, colors, radii };
   }, [data, xScale, yScale, xVariable, yVariable, colorVariable, colorScale]);
 
   //TODO: Scatterplot Positions
@@ -109,6 +115,7 @@ export const Particles = ({
     () => ({
       uniforms: {
         uTime: { value: 0 },
+        uPointSize: { value: 20.0 },
       },
       vertexShader,
       fragmentShader,
