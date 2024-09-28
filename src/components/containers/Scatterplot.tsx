@@ -147,7 +147,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       () =>
         scaleLinear<number>({
           domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
-          range: [-200, 200],
+          // range: [-200, 200],
+          range: [margin.left, width - margin.right],
           clamp: false,
         }),
       [data, width]
@@ -156,7 +157,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       () =>
         scaleLinear<number>({
           domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
-          range: [-100, 100],
+          // range: [-100, 100],
+          range: [height - margin.bottom, margin.top],
           clamp: false,
         }),
       [data, height]
@@ -323,7 +325,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
 
       // Update state
 
-      updateSelectedCounties(Array.from(selectedPointsSet));
+      // updateSelectedCounties(Array.from(selectedPointsSet));
     });
 
     const handleCanvasClick = useCallback(() => {
@@ -382,13 +384,14 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     return (
       <>
         <Canvas
+          dpr={window.devicePixelRatio}
           camera={{
             fov: 45,
-            near: 0.1,
-            far: 500,
-            position: [0, 0, 220],
+            near: 1,
+            far: 1000,
+            position: [0, 0, 200 ],
           }}
-          style={{ background: "transparent", position: "absolute" }}
+          style={{ background: "transparent" }}
         >
           {/* <color attach="background" args={["black"]} /> */}
           <OrbitControls makeDefault />
