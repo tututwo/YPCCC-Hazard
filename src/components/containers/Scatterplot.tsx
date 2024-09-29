@@ -33,7 +33,7 @@ import Tooltip from "@/components/ui/tooltip";
 // NOTE: R3F
 import { Canvas } from "@react-three/fiber";
 
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Particles } from "./scatterplot-r3f/Scatterplot-R3f";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
@@ -385,16 +385,19 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       <>
         <Canvas
           dpr={window.devicePixelRatio}
-          camera={{
-            fov: 45,
-            near: 1,
-            far: 1000,
-            position: [0, 0, 200 ],
-          }}
           style={{ background: "transparent" }}
         >
           {/* <color attach="background" args={["black"]} /> */}
-          <OrbitControls makeDefault />
+          <OrthographicCamera
+            makeDefault
+            fov={45}
+            near={1}
+            far={1000}
+            position={[0, 0, 1 ]}
+          >
+            {/* <group position={[0, 0, 100]} /> */}
+          </OrthographicCamera>
+          <OrbitControls makeDefault target={[0, 0, 0]} />
           <Particles
             data={data}
             xScale={x}

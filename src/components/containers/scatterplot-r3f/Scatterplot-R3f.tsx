@@ -1,72 +1,100 @@
-import { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
-
+import { useFrame, useThree } from "@react-three/fiber";
+import { Instance, Instances } from "@react-three/drei";
 import * as d3 from "d3";
 import { useMapStore } from "@/lib/store";
+// vertexShader.js
+
 export const vertexShader = `
 precision highp float;
-attribute vec3 color;
-varying vec3 vColor;
-varying float vPointSize;
 
-uniform float uTime;
+attribute vec3 instancePosition;
+attribute float instanceRadius;
+attribute vec3 instanceColor;
+
+uniform float radiusScale;
+uniform float radiusMinPixels;
+uniform float radiusMaxPixels;
+uniform bool billboard;
+uniform float uAnimationProgress;
+
+varying vec3 vColor;
+varying vec3 vOriginalColor;
+varying vec2 vUnitPosition;
+varying float vOuterRadiusPixels;
 
 void main() {
-  float amp = 1.;
-  float freq = 0.4;
-  float time = uTime * 0.0008;
+  // Compute the scaled and clamped radius
+  float animatedRadius = instanceRadius * (1.0 + uAnimationProgress * 0.5); // Increase size by up to 50%
+  vOuterRadiusPixels = clamp(
+    radiusScale * animatedRadius,
+    radiusMinPixels,
+    radiusMaxPixels
+  );
 
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
-  gl_PointSize = 25.0;
-  vPointSize = gl_PointSize;
-  vColor = color;
+  // Position within the unit square [-1, 1]
+  vUnitPosition = position.xy;
+
+  // Pass color to fragment shader
+  vOriginalColor = instanceColor;
+  vColor = instanceColor;
+
+  // Calculate offset
+  vec3 offset = position * vOuterRadiusPixels;
+
+  vec4 mvPosition = modelViewMatrix * vec4(instancePosition, 1.0);
+
+  if (billboard) {
+    mvPosition.xy += offset.xy;
+    gl_Position = projectionMatrix * mvPosition;
+  } else {
+    vec4 worldPosition = modelMatrix * vec4(instancePosition + offset, 1.0);
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
 }
-  `;
+`;
 
-// export const fragmentShader = `
-// varying vec3 vColor;
-// void main() {
-//   // 点の中心からの距離を元に透明度を指定し、丸くする
-//   // float alpha = 1. - smoothstep(0.4995, 0.5005, length(gl_PointCoord - vec2(0.5)));
-//   // gl_FragColor = vec4(vColor, 1.0);
-
-// }
-//   `;
-
+// fragmentShader.js
 export const fragmentShader = `
-float smoothedge(float edge, float x) {
-  return smoothstep(edge - 0.5, edge + 0.5, x);
-}
+precision highp float;
+
 varying vec3 vColor;
+varying vec3 vOriginalColor;
+varying vec2 vUnitPosition;
+varying float vOuterRadiusPixels;
+
+uniform float uAnimationProgress;
 
 void main() {
-  vec2 center = vec2(0.5);
-  float dist = distance(gl_PointCoord, center);
+  // Calculate distance from center
+  float dist = length(vUnitPosition) * vOuterRadiusPixels;
 
-  // Define radii
-  float innerRadius = 0.3;
-  float middleRadius = 0.35;
-  float outerRadius = 0.5;
+  // Define radii for inner circle and rings
+  float innerRadius = vOuterRadiusPixels * 0.6;
+  float middleRadius = vOuterRadiusPixels * 0.7;
+  float outerRadius = vOuterRadiusPixels;
 
-  // Create sharp transitions
-  float innerRegion = step(dist, innerRadius);
-  float middleRegion = step(innerRadius, dist) * step(dist, middleRadius);
-  float outerRegion = step(middleRadius, dist) * step(dist, outerRadius);
+  // Edge smoothing factor
+  float edgeWidth = fwidth(dist) * 1.5;
 
-  vec4 customColor = vec4(vColor, 1.0);
-  vec4 whiteColor = vec4(1.0, 1.0, 1.0, 1.0);
+  // Calculate smooth transitions
+  float innerCircle = 1.0 - smoothstep(innerRadius - edgeWidth, innerRadius + edgeWidth, dist);
+  float whiteRing = smoothstep(innerRadius - edgeWidth, innerRadius + edgeWidth, dist) -
+                    smoothstep(middleRadius - edgeWidth, middleRadius + edgeWidth, dist);
+  float outerRing = smoothstep(middleRadius - edgeWidth, middleRadius + edgeWidth, dist) -
+                    smoothstep(outerRadius - edgeWidth, outerRadius + edgeWidth, dist);
 
-  // Combine the regions
-  vec4 color = customColor * innerRegion + whiteColor * middleRegion + customColor * outerRegion;
+  // Combine colors
+  vec3 finalColor = vColor * (innerCircle + outerRing) + vec3(1.0) * whiteRing;
+  vec3 color = mix(vOriginalColor, finalColor, uAnimationProgress);
+  float alpha = innerCircle + whiteRing + outerRing;
 
-  // Discard fragments outside the outer radius
-  if (dist > outerRadius) discard;
+  if (alpha < .01) discard;
 
-  gl_FragColor = color;
+  gl_FragColor = vec4(color, alpha * 0.77);
 }
-
-  `;
+`;
 
 export const Particles = ({
   data,
@@ -83,74 +111,114 @@ export const Particles = ({
     selectedCounties,
     updateSelectedCounties,
   } = useMapStore();
-
-  const { positions, colors, radii } = useMemo(() => {
+  const meshRef = useRef();
+  const { scene } = useThree();
+  const animationProgressRef = useRef(0);
+  useEffect(() => {
+    animationProgressRef.current = 0;
     const dataLength = data.length;
-    const positions = new Float32Array(dataLength * 3);
-    const colors = new Float32Array(dataLength * 3);
-    const radii = new Float32Array(dataLength);
     const x = xScale.copy().range([-200, 200]);
     const y = yScale.copy().range([-100, 100]);
+    // Create a plane geometry (square) for instancing
+    const baseGeometry = new THREE.PlaneGeometry(2, 2);
+    const instancedGeometry = new THREE.InstancedBufferGeometry();
+
+    // Copy attributes from base geometry
+    instancedGeometry.index = baseGeometry.index;
+    instancedGeometry.attributes.position = baseGeometry.attributes.position;
+
+    // Create instanced attributes
+    const instancePositions = new Float32Array(dataLength * 3);
+    const instanceColors = new Float32Array(dataLength * 3);
+    const instanceRadii = new Float32Array(dataLength);
+
     for (let i = 0; i < dataLength; i++) {
       const i3 = i * 3;
-      positions[i3] = x(+data[i][xVariable]);
-      positions[i3 + 1] = 0;
-      positions[i3 + 2] = y(+data[i][yVariable]);
 
-      const color = d3.rgb(colorScale(data[i][colorVariable]));
+      // Set instance positions
+      instancePositions[i3] = x(+data[i][xVariable]);
+      instancePositions[i3 + 2] = 0; // Assuming Y-up coordinate system
+      instancePositions[i3 + 1] = y(+data[i][yVariable]);
 
-      colors[i3] = color.r / 255;
-      colors[i3 + 1] = color.g / 255;
-      colors[i3 + 2] = color.b / 255;
+      // Set instance colors
+      const color = new THREE.Color(colorScale(data[i][colorVariable]));
+      instanceColors[i3] = color.r;
+      instanceColors[i3 + 1] = color.g;
+      instanceColors[i3 + 2] = color.b;
 
-      radii[i] = 10.0; // Set the desired radius
+      // Set instance radii
+      instanceRadii[i] = 3; // Adjust as needed
     }
 
-    return { positions, colors, radii };
-  }, [data, xScale, yScale, xVariable, yVariable, colorVariable, colorScale]);
+    // Assign instanced attributes to the geometry
+    instancedGeometry.setAttribute(
+      "instancePosition",
+      new THREE.InstancedBufferAttribute(instancePositions, 3)
+    );
+    instancedGeometry.setAttribute(
+      "instanceColor",
+      new THREE.InstancedBufferAttribute(instanceColors, 3)
+    );
+    instancedGeometry.setAttribute(
+      "instanceRadius",
+      new THREE.InstancedBufferAttribute(instanceRadii, 1)
+    );
 
-  //TODO: Scatterplot Positions
+    // Define uniforms
+    const uniforms = {
+      radiusScale: { value: 1 },
+      radiusMinPixels: { value: 0 },
+      radiusMaxPixels: { value: 100 },
+      billboard: { value: false },
+      uAnimationProgress: { value: 0 },
+    };
 
-  const shaderArgs = useMemo(
-    () => ({
-      uniforms: {
-        uTime: { value: 0 },
-        uPointSize: { value: 20.0 },
-      },
+    // Create shader material
+    const material = new THREE.ShaderMaterial({
+      uniforms,
       vertexShader,
       fragmentShader,
-    }),
-    []
-  );
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      // blending: THREE.SubtractiveBlending,
+    });
 
-  // useFrame(() => {
-  //   shaderArgs.uniforms.uTime.value++;
-  // }, []);
+    // Create instanced mesh
+    const mesh = new THREE.Mesh(instancedGeometry, material);
+    mesh.rotation.x = 0; // Adjust rotation if needed
 
-  return (
-    <points rotation={[-Math.PI / 2, 0, 0]}>
-      <bufferGeometry attach="geometry">
-        <bufferAttribute
-          attach="attributes-position"
-          array={positions}
-          itemSize={3}
-          count={positions.length / 3}
-        />
-        <bufferAttribute
-          attach="attributes-color"
-          array={colors}
-          itemSize={3}
-          count={colors.length / 3}
-        />
-      </bufferGeometry>
-      <shaderMaterial
-        args={[shaderArgs]}
-        transparent
-        alphaTest={0.5}
-        depthTest={false}
-        depthWrite={false}
-        // blending={THREE.AdditiveBlending}
-      />
-    </points>
-  );
+    // Add mesh to the scene
+    scene.add(mesh);
+    meshRef.current = mesh;
+    // Clean up when the component unmounts
+    return () => {
+      scene.remove(mesh);
+      instancedGeometry.dispose();
+      material.dispose();
+    };
+  }, [
+    data,
+    xScale,
+    yScale,
+    xVariable,
+    yVariable,
+    colorVariable,
+    colorScale,
+    scene,
+  ]);
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      // Increment the time
+      animationProgressRef.current += delta * 0.5; // Adjust speed by changing this multiplier
+  
+      // Calculate the undulating value between 0 and 1
+      const undulatingValue = (Math.sin(animationProgressRef.current) + 1) * 0.5;
+  
+      // Update uniform
+      meshRef.current.material.uniforms.uAnimationProgress.value = undulatingValue;
+    }
+  });
+  // No need to render anything directly
+  return null;
 };
