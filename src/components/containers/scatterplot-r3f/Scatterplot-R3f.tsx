@@ -12,24 +12,22 @@ precision highp float;
 attribute vec3 instancePosition;
 attribute float instanceRadius;
 attribute vec3 instanceColor;
-// Add to your attribute declarations
-attribute float instanceSelected;
-varying float vSelected;
+attribute float instanceAnimationProgress;
 
-uniform float radiusScale;
-uniform float radiusMinPixels;
-uniform float radiusMaxPixels;
-uniform bool billboard;
-uniform float uAnimationProgress;
-
+varying float vAnimationProgress;
 varying vec3 vColor;
 varying vec3 vOriginalColor;
 varying vec2 vUnitPosition;
 varying float vOuterRadiusPixels;
 
+uniform float radiusScale;
+uniform float radiusMinPixels;
+uniform float radiusMaxPixels;
+uniform bool billboard;
+
 void main() {
   // Compute the scaled and clamped radius
-  float animatedRadius = instanceRadius * (1.0 + uAnimationProgress * 0.5); // Increase size by up to 50%
+  float animatedRadius = instanceRadius * (1.0 + instanceAnimationProgress * 0.5);
   vOuterRadiusPixels = clamp(
     radiusScale * animatedRadius,
     radiusMinPixels,
@@ -39,12 +37,10 @@ void main() {
   // Position within the unit square [-1, 1]
   vUnitPosition = position.xy;
 
-  // Pass color to fragment shader
+  // Pass color and animation progress to fragment shader
   vOriginalColor = instanceColor;
   vColor = instanceColor;
-
-    // Pass the selection status to the fragment shader
-  vSelected = instanceSelected;
+  vAnimationProgress = instanceAnimationProgress;
 
   // Calculate offset
   vec3 offset = position * vOuterRadiusPixels;
@@ -69,10 +65,7 @@ varying vec3 vColor;
 varying vec3 vOriginalColor;
 varying vec2 vUnitPosition;
 varying float vOuterRadiusPixels;
-// Use the varying variable
-varying float vSelected;
-
-uniform float uAnimationProgress;
+varying float vAnimationProgress;
 
 void main() {
   // Calculate distance from center
@@ -95,7 +88,10 @@ void main() {
 
   // Combine colors
   vec3 finalColor = vColor * (innerCircle + outerRing) + vec3(1.0) * whiteRing;
- vec3 color = mix(vOriginalColor, finalColor, uAnimationProgress * vSelected);
+
+  // Apply per-instance animation progress
+  vec3 color = mix(vOriginalColor, finalColor, vAnimationProgress);
+
   float alpha = innerCircle + whiteRing + outerRing;
 
   if (alpha < .01) discard;
@@ -145,9 +141,10 @@ export const Particles = ({
 
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<ParticleMaterial>(null);
-  const animationProgressRef = useRef(0);
+  const instanceAnimationProgressRef = useRef(new Float32Array(data.length));
+  const targetSelectedRef = useRef(new Float32Array(data.length));
 
-  const [positions, colors, radii, selectedIndices] = useMemo(() => {
+  const [positions, colors, radii] = useMemo(() => {
     const dataLength = data.length;
     // const x = xScale.copy().range([xScale.range()[0]-10, xScale.range()[1]+10]);
     // const y = yScale.copy().range([yScale.range()[1]+10, yScale.range()[0]-10]);
@@ -179,11 +176,12 @@ export const Particles = ({
       colors[i3 + 2] = color.b;
 
       radii[i] = 3; // Adjust as needed
-      // Set selectedIndices based on whether the point is selected
-      selectedIndices[i] = selectedSet.has(data[i].geoid) ? 1.0 : 0.0;
+      // // Initialize animation progress and target selection
+      instanceAnimationProgressRef.current[i] = 0;
+      targetSelectedRef.current[i] = 0;
     }
 
-    return [positions, colors, radii, selectedIndices];
+    return [positions, colors, radii];
   }, [
     data,
     xScale,
@@ -192,22 +190,39 @@ export const Particles = ({
     yVariable,
     colorVariable,
     colorScale,
-    selectedCounties,
+    // selectedCounties,
   ]);
-  // useEffect(() => {
-  //   // Reset animation progress
-  //   animationProgressRef.current = 0;
-  // }, [selectedCounties]); // Re-run whenever selectedCounties changes
+  useEffect(() => {
+    const selectedSet = new Set(selectedCounties);
+    for (let i = 0; i < data.length; i++) {
+      targetSelectedRef.current[i] = selectedSet.has(data[i].geoid) ? 1.0 : 0.0;
+    }
+  }, [selectedCounties, data]);
 
   useFrame((state, delta) => {
-    if (materialRef.current) {
-      if (animationProgressRef.current < 1.0) {
-        animationProgressRef.current += delta * .09; // Adjust speed as needed
-        if (animationProgressRef.current > 1.0) {
-          animationProgressRef.current = 1.0;
+    let needsUpdate = false;
+    const animationProgress = instanceAnimationProgressRef.current;
+    const targetSelected = targetSelectedRef.current;
+
+    for (let i = 0; i < data.length; i++) {
+      const target = targetSelected[i];
+      const current = animationProgress[i];
+
+      if (current !== target) {
+        needsUpdate = true;
+
+        const deltaProgress = delta * 2.0; // Adjust speed
+        if (current < target) {
+          animationProgress[i] = Math.min(current + deltaProgress, target);
+        } else {
+          animationProgress[i] = Math.max(current - deltaProgress, target);
         }
-        materialRef.current.uAnimationProgress = animationProgressRef.current;
       }
+    }
+
+    if (needsUpdate && meshRef.current) {
+      meshRef.current.geometry.attributes.instanceAnimationProgress.needsUpdate =
+        true;
     }
   });
 
@@ -234,8 +249,8 @@ export const Particles = ({
         args={[radii, 1]}
       />
       <instancedBufferAttribute
-        attach="geometry-attributes-instanceSelected"
-        args={[selectedIndices, 1]}
+        attach="geometry-attributes-instanceAnimationProgress"
+        args={[instanceAnimationProgressRef.current, 1]}
       />
     </instancedMesh>
   );
