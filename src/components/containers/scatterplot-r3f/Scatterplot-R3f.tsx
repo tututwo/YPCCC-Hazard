@@ -1,17 +1,20 @@
+// @ts-nocheck
 import React, { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
-import { useFrame, useThree } from "@react-three/fiber";
-import { Instance, Instances } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { shaderMaterial } from "@react-three/drei";
 import * as d3 from "d3";
 import { useMapStore } from "@/lib/store";
-// vertexShader.js
-
+import { extend, Object3DNode } from "@react-three/fiber";
 export const vertexShader = `
 precision highp float;
 
 attribute vec3 instancePosition;
 attribute float instanceRadius;
 attribute vec3 instanceColor;
+// Add to your attribute declarations
+attribute float instanceSelected;
+varying float vSelected;
 
 uniform float radiusScale;
 uniform float radiusMinPixels;
@@ -40,6 +43,9 @@ void main() {
   vOriginalColor = instanceColor;
   vColor = instanceColor;
 
+    // Pass the selection status to the fragment shader
+  vSelected = instanceSelected;
+
   // Calculate offset
   vec3 offset = position * vOuterRadiusPixels;
 
@@ -63,6 +69,8 @@ varying vec3 vColor;
 varying vec3 vOriginalColor;
 varying vec2 vUnitPosition;
 varying float vOuterRadiusPixels;
+// Use the varying variable
+varying float vSelected;
 
 uniform float uAnimationProgress;
 
@@ -87,7 +95,7 @@ void main() {
 
   // Combine colors
   vec3 finalColor = vColor * (innerCircle + outerRing) + vec3(1.0) * whiteRing;
-  vec3 color = mix(vOriginalColor, finalColor, uAnimationProgress);
+ vec3 color = mix(vOriginalColor, finalColor, uAnimationProgress * vSelected);
   float alpha = innerCircle + whiteRing + outerRing;
 
   if (alpha < .01) discard;
@@ -96,6 +104,28 @@ void main() {
 }
 `;
 
+const ParticleMaterial = shaderMaterial(
+  {
+    radiusScale: 2,
+    radiusMinPixels: 0,
+    radiusMaxPixels: 100,
+    billboard: false,
+    uAnimationProgress: 0,
+  },
+  vertexShader,
+  fragmentShader
+);
+
+extend({ ParticleMaterial });
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      particleMaterial: Object3DNode<ParticleMaterial, typeof ParticleMaterial>;
+    }
+  }
+}
+
 export const Particles = ({
   data,
   xScale,
@@ -103,6 +133,7 @@ export const Particles = ({
   xVariable = "xValue",
   yVariable = "yValue",
   colorVariable = "gap",
+  margin,
 }) => {
   const {
     selectedState,
@@ -111,92 +142,48 @@ export const Particles = ({
     selectedCounties,
     updateSelectedCounties,
   } = useMapStore();
-  const meshRef = useRef();
-  const { scene } = useThree();
+
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const materialRef = useRef<ParticleMaterial>(null);
   const animationProgressRef = useRef(0);
-  useEffect(() => {
-    animationProgressRef.current = 0;
+
+  const [positions, colors, radii, selectedIndices] = useMemo(() => {
     const dataLength = data.length;
-    const x = xScale.copy().range([-200, 200]);
-    const y = yScale.copy().range([-100, 100]);
-    // Create a plane geometry (square) for instancing
-    const baseGeometry = new THREE.PlaneGeometry(2, 2);
-    const instancedGeometry = new THREE.InstancedBufferGeometry();
+    // const x = xScale.copy().range([xScale.range()[0]-10, xScale.range()[1]+10]);
+    // const y = yScale.copy().range([yScale.range()[1]+10, yScale.range()[0]-10]);
+    const x = xScale
+      .copy()
+      // .domain([xScale.domain()[0] * 0.99, xScale.domain()[1] * 1.1])
+      .range([xScale.range()[0], xScale.range()[1]]);
+    const y = yScale
+      .copy()
+      .domain([yScale.domain()[1], yScale.domain()[0]])
+      .range([yScale.range()[0], yScale.range()[1]]);
+    const positions = new Float32Array(dataLength * 3);
+    const colors = new Float32Array(dataLength * 3);
+    const radii = new Float32Array(dataLength);
+    const selectedIndices = new Float32Array(dataLength); // New array for selection
 
-    // Copy attributes from base geometry
-    instancedGeometry.index = baseGeometry.index;
-    instancedGeometry.attributes.position = baseGeometry.attributes.position;
-
-    // Create instanced attributes
-    const instancePositions = new Float32Array(dataLength * 3);
-    const instanceColors = new Float32Array(dataLength * 3);
-    const instanceRadii = new Float32Array(dataLength);
+    const selectedSet = new Set(selectedCounties); // Convert to Set for efficient look-up
 
     for (let i = 0; i < dataLength; i++) {
       const i3 = i * 3;
 
-      // Set instance positions
-      instancePositions[i3] = x(+data[i][xVariable]);
-      instancePositions[i3 + 2] = 0; // Assuming Y-up coordinate system
-      instancePositions[i3 + 1] = y(+data[i][yVariable]);
+      positions[i3] = x(+data[i][xVariable]);
+      positions[i3 + 2] = 0;
+      positions[i3 + 1] = y(+data[i][yVariable]);
 
-      // Set instance colors
       const color = new THREE.Color(colorScale(data[i][colorVariable]));
-      instanceColors[i3] = color.r;
-      instanceColors[i3 + 1] = color.g;
-      instanceColors[i3 + 2] = color.b;
+      colors[i3] = color.r;
+      colors[i3 + 1] = color.g;
+      colors[i3 + 2] = color.b;
 
-      // Set instance radii
-      instanceRadii[i] = 3; // Adjust as needed
+      radii[i] = 3; // Adjust as needed
+      // Set selectedIndices based on whether the point is selected
+      selectedIndices[i] = selectedSet.has(data[i].geoid) ? 1.0 : 0.0;
     }
 
-    // Assign instanced attributes to the geometry
-    instancedGeometry.setAttribute(
-      "instancePosition",
-      new THREE.InstancedBufferAttribute(instancePositions, 3)
-    );
-    instancedGeometry.setAttribute(
-      "instanceColor",
-      new THREE.InstancedBufferAttribute(instanceColors, 3)
-    );
-    instancedGeometry.setAttribute(
-      "instanceRadius",
-      new THREE.InstancedBufferAttribute(instanceRadii, 1)
-    );
-
-    // Define uniforms
-    const uniforms = {
-      radiusScale: { value: 1 },
-      radiusMinPixels: { value: 0 },
-      radiusMaxPixels: { value: 100 },
-      billboard: { value: false },
-      uAnimationProgress: { value: 0 },
-    };
-
-    // Create shader material
-    const material = new THREE.ShaderMaterial({
-      uniforms,
-      vertexShader,
-      fragmentShader,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      // blending: THREE.SubtractiveBlending,
-    });
-
-    // Create instanced mesh
-    const mesh = new THREE.Mesh(instancedGeometry, material);
-    mesh.rotation.x = 0; // Adjust rotation if needed
-
-    // Add mesh to the scene
-    scene.add(mesh);
-    meshRef.current = mesh;
-    // Clean up when the component unmounts
-    return () => {
-      scene.remove(mesh);
-      instancedGeometry.dispose();
-      material.dispose();
-    };
+    return [positions, colors, radii, selectedIndices];
   }, [
     data,
     xScale,
@@ -205,20 +192,51 @@ export const Particles = ({
     yVariable,
     colorVariable,
     colorScale,
-    scene,
+    selectedCounties,
   ]);
+  // useEffect(() => {
+  //   // Reset animation progress
+  //   animationProgressRef.current = 0;
+  // }, [selectedCounties]); // Re-run whenever selectedCounties changes
+
   useFrame((state, delta) => {
-    if (meshRef.current) {
-      // Increment the time
-      animationProgressRef.current += delta * 0.5; // Adjust speed by changing this multiplier
-  
-      // Calculate the undulating value between 0 and 1
-      const undulatingValue = (Math.sin(animationProgressRef.current) + 1) * 0.5;
-  
-      // Update uniform
-      meshRef.current.material.uniforms.uAnimationProgress.value = undulatingValue;
+    if (materialRef.current) {
+      if (animationProgressRef.current < 1.0) {
+        animationProgressRef.current += delta * .09; // Adjust speed as needed
+        if (animationProgressRef.current > 1.0) {
+          animationProgressRef.current = 1.0;
+        }
+        materialRef.current.uAnimationProgress = animationProgressRef.current;
+      }
     }
   });
-  // No need to render anything directly
-  return null;
+
+  return (
+    <instancedMesh ref={meshRef} args={[null, null, data.length]}>
+      <planeGeometry args={[2, 2]} />
+      <particleMaterial
+        ref={materialRef}
+        transparent
+        depthTest={false}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+      <instancedBufferAttribute
+        attach="geometry-attributes-instancePosition"
+        args={[positions, 3]}
+      />
+      <instancedBufferAttribute
+        attach="geometry-attributes-instanceColor"
+        args={[colors, 3]}
+      />
+      <instancedBufferAttribute
+        attach="geometry-attributes-instanceRadius"
+        args={[radii, 1]}
+      />
+      <instancedBufferAttribute
+        attach="geometry-attributes-instanceSelected"
+        args={[selectedIndices, 1]}
+      />
+    </instancedMesh>
+  );
 };

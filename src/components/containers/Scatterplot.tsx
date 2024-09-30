@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 import React, {
   useRef,
@@ -47,64 +46,9 @@ const tickLabelProps = {
 let tooltipTimeout: number;
 const twoSigFigFormatter = d3.format(".2r");
 
-const margin = { top: 10, right: 80, bottom: 60, left: 60 };
+const margin = { top: 20, right: 40, bottom: 60, left: 60 };
 gsap.registerPlugin(useGSAP);
-// function drawPoints(
-//   canvas,
-//   dataset,
-//   selectedCounties,
-//   xVariable,
-//   yVariable,
-//   colorVariable,
-//   xScale,
-//   yScale,
-//   colorScale
-// ) {
-//   const ctx = canvas.getContext("2d");
 
-//   ctx.clearRect(0, 0, canvas.width, canvas.height);
-//   dataset.forEach((d) => {
-//     const isHighlighted = d.isBrushed || selectedCounties.includes(d.geoid);
-
-//     // NOTE: Larger circle
-//     if (isHighlighted) {
-//       ctx.beginPath();
-//       // circle merge?
-//       ctx.arc(
-//         xScale(d[xVariable]),
-//         yScale(d[yVariable]),
-//         d.radius * 1.4,
-//         0,
-//         2 * Math.PI
-//       );
-//       ctx.fillStyle = "white";
-//       ctx.fill();
-//       ctx.strokeStyle = colorScale(d[colorVariable]);
-//       ctx.lineWidth = 2;
-//       ctx.stroke();
-//     }
-//     // NOTE: Smaller circle
-
-//     // ctx.globalCompositeOperation = "screen";
-//     ctx.globalAlpha = isHighlighted ? 1 : 0.8;
-//     ctx.beginPath();
-//     ctx.arc(
-//       xScale(d[xVariable]),
-//       yScale(d[yVariable]),
-//       d.radius,
-//       0,
-//       2 * Math.PI
-//     );
-//     ctx.fillStyle = colorScale(d[colorVariable]);
-//     ctx.fill();
-//     // FIXME: This produce a merging effect
-//     // ctx.fillStyle = "white";
-//     // ctx.fill();
-//     // ctx.strokeStyle = "black";
-//     // ctx.lineWidth = 2;
-//     // ctx.stroke();
-//   });
-// }
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   ({
     data,
@@ -123,13 +67,11 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
     const brushRef = useRef<any>(null);
-    const foregroundCanvasRef = useRef(null);
-    const backgroundCanvasRef = useRef(null);
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const xMax = width - margin.left;
-    const yMax = height - margin.bottom;
+    const xMax = width - margin.left - margin.right;
+    const yMax = height - margin.bottom - margin.top;
     const [isBrushing, setIsBrushing] = useState(false);
 
     // FIXME: This is really slow. Improve it
@@ -146,20 +88,20 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const x = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
+          domain: [0, 105],
           // range: [-200, 200],
-          range: [margin.left, width - margin.right],
-          clamp: false,
+          range: [0, xMax],
+          clamp: true,
         }),
       [data, width]
     );
     const y = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
+          domain: [10, 75],
           // range: [-100, 100],
-          range: [height - margin.bottom, margin.top],
-          clamp: false,
+          range: [yMax, 0],
+          clamp: true,
         }),
       [data, height]
     );
@@ -174,40 +116,23 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     // Memoize coloredAndRaisedData
     const coloredAndRaisedData = useMemo(() => {
       let result = coloredData;
-      // if (hoveredPointId) {
-      //   const index = result.findIndex((d) => d.geoid === hoveredPointId);
-      //   if (index !== -1) {
-      //     result = raise(result, index);
-      //   }
-      // }
 
       return result;
     }, [coloredData]);
 
     const { contextSafe } = useGSAP(
       // draw foreground canvas
-      () => {
-        // const drawCanvas = () => {
-        //   drawPoints(
-        //     foregroundCanvasRef.current,
-        //     coloredAndRaisedData,
-        //     selectedCounties,
-        //     xVariable,
-        //     yVariable,
-        //     colorVariable,
-        //     x,
-        //     y,
-        //     colorScale
-        //   );
-        // };
-        // gsap.ticker.add(drawCanvas);
-        // return () => {
-        //   gsap.ticker.remove(drawCanvas);
-        // };
-      },
+      () => {},
       { dependencies: [coloredAndRaisedData, width, height] }
     );
 
+    const quadtree = useMemo(() => {
+      return d3
+        .quadtree()
+        .x((d) => d[xVariable])
+        .y((d) => d[yVariable])
+        .addAll(coloredAndRaisedData);
+    }, [coloredAndRaisedData, xVariable, yVariable]);
     // // // // // // // // // // // // // // // // // //
     // // // // // // // // Tooltip // // // // // // // //
     // // // // // // // // // // // // // // // // // //
@@ -218,10 +143,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         (d) => y(d[yVariable])
       );
     }, [coloredAndRaisedData, x, y, xVariable, yVariable]);
-
-    const voronoi = useMemo(() => {
-      return delaunay.voronoi([0, 0, width, height]);
-    }, [delaunay, width, height]);
 
     const handleMouseMove = useCallback(
       (event) => {
@@ -264,110 +185,40 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       // setIsBrushing(false);
     }, []); // Add dependencies here
 
-    const radiusQuickSetters = useMemo(() => {
-      return coloredAndRaisedData.map((d) => ({
-        geoid: d.geoid,
-        setRadius: gsap.quickTo(d, "radius", {
-          duration: 0.1,
-          ease: "power2.inOut",
-        }),
-      }));
-    }, [coloredAndRaisedData]);
-
     const handleBrushChange = contextSafe((domain: Bounds | null) => {
       if (!domain) return;
 
       const { x0, x1, y0, y1 } = domain;
       const selectedPointsSet = new Set<string>();
 
-      coloredAndRaisedData.forEach((d) => {
-        const isBrushed =
-          d[xVariable] >= x0 &&
-          d[xVariable] <= x1 &&
-          d[yVariable] >= y0 &&
-          d[yVariable] <= y1;
-
-        d.isBrushed = isBrushed;
-
-        // Find the quickSetter for this data point
-        const quickSetter = radiusQuickSetters.find((s) => s.geoid === d.geoid);
-        // Use quickTo for both entrance and exit animations
-        if (quickSetter) {
-          quickSetter.setRadius(isBrushed ? 6 : 3);
+      quadtree.visit((node, x1_, y1_, x2_, y2_) => {
+        // Skip this node if it doesn't intersect the brush area
+        if (x2_ < x0 || x1_ > x1 || y2_ < y0 || y1_ > y1) {
+          return true; // Don't visit child nodes
         }
-
-        if (isBrushed) {
-          selectedPointsSet.add(d.geoid);
+    
+        // If it's a leaf node, check its points
+        if (!node.length) {
+          let nodeData = node.data;
+          do {
+            const d = nodeData;
+            const xVal = d[xVariable];
+            const yVal = d[yVariable];
+    
+            if (xVal >= x0 && xVal <= x1 && yVal >= y0 && yVal <= y1) {
+              selectedPointsSet.add(d.geoid);
+            }
+            nodeData = node.next;
+          } while (nodeData);
         }
-        // if (isBrushed) {
-        //   selectedPointsSet.add(d.geoid);
-        //   // Use quickTo to set radius to 6 for brushed items
-        //   if (quickSetter) {
-        //     quickSetter.setRadius(6);
-        //   }
-        // } else {
-        //   // If the item was previously brushed and is now unbrushed, trigger exit animation
-        //   if (wasBrushed) {
-        //     // Start GSAP tween from current radius to 3
-        //     gsap.to(d, {
-        //       radius: 3,
-        //       duration: 0.5,
-        //       ease: "power2.inOut",
-        //     });
-        //   } else {
-        //     // For unbrushed items that were not previously brushed, ensure radius is 3
-        //     if (d.radius !== 3 && quickSetter) {
-        //       quickSetter.setRadius(3);
-        //     }
-        //   }
-        // }
+    
+        // Continue traversing child nodes
+        return false;
       });
-
       // Update state
 
-      // updateSelectedCounties(Array.from(selectedPointsSet));
+      updateSelectedCounties(Array.from(selectedPointsSet));
     });
-
-    const handleCanvasClick = useCallback(() => {
-      // Reset the brushed state
-      coloredAndRaisedData.forEach((d) => {
-        d.isBrushed = false;
-        d.radius = 3; // Reset radius to initial value
-      });
-
-      // Kill all GSAP animations related to data points
-      gsap.killTweensOf(coloredAndRaisedData);
-
-      // Update state to reflect no selection
-
-      setBrushedCircles(new Set());
-      updateSelectedCounties([]);
-
-      // Redraw the canvas
-      drawPoints(
-        foregroundCanvasRef.current,
-        coloredAndRaisedData,
-        selectedCounties,
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale
-      );
-    }, [
-      coloredAndRaisedData,
-      selectedCounties,
-      xVariable,
-      yVariable,
-      colorVariable,
-      x,
-      y,
-      colorScale,
-
-      updateSelectedCounties,
-      foregroundCanvasRef,
-    ]);
 
     const selectedBoxStyle = useMemo(
       () => ({
@@ -381,23 +232,40 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       }),
       [selectedState]
     );
+
     return (
       <>
         <Canvas
           dpr={window.devicePixelRatio}
-          style={{ background: "transparent" }}
+          style={{
+            background: "transparent",
+            position: "absolute",
+            width: xMax,
+            height: yMax,
+            top: margin.top,
+            left: margin.left,
+            zIndex: 10,
+          }}
         >
           {/* <color attach="background" args={["black"]} /> */}
           <OrthographicCamera
             makeDefault
-            fov={45}
-            near={1}
+            zoom={1}
+            top={innerHeight}
+            bottom={0}
+            left={0}
+            right={innerWidth}
+            near={-1000}
             far={1000}
-            position={[0, 0, 1 ]}
-          >
-            {/* <group position={[0, 0, 100]} /> */}
-          </OrthographicCamera>
-          <OrbitControls makeDefault target={[0, 0, 0]} />
+            position={[xMax / 2, yMax / 2, 500]}
+          />
+          <OrbitControls
+            makeDefault
+            target={[xMax / 2, yMax / 2, 0]}
+            enableRotate={true}
+            enableZoom={true}
+            enablePan={true}
+          />
           <Particles
             data={data}
             xScale={x}
@@ -405,8 +273,9 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             xVariable={xVariable}
             yVariable={yVariable}
             colorVariable={colorVariable}
+            margin={margin}
           />
-          <axesHelper args={[100]} />
+          {/* <axesHelper args={[1000]} /> */}
           {/* <EffectComposer>
             <Bloom
               luminanceThreshold={0.1}
@@ -454,6 +323,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             />
             <AxisLeft
               scale={y}
+              numTicks={width > 520 ? 5 : 5}
               hideTicks
               hideZero
               hideAxisLine
@@ -471,22 +341,23 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             maxHeight: height,
             cursor: isBrushing ? "crosshair" : "pointer",
           }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
         >
-          <Group left={margin.left} top={margin.top}>
+          <Group
+            left={margin.left}
+            top={margin.top}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+          >
             <Brush
               ref={brushRef}
               xScale={x}
               yScale={y}
-              width={width - margin.left}
-              height={innerHeight}
-              margin={margin}
+              width={xMax}
+              height={yMax}
               handleSize={8}
               resizeTriggerAreas={["left", "right", "top", "bottom", "center"]}
               brushDirection="both"
               initialBrushPosition={null}
-              onClick={handleCanvasClick}
               onChange={handleBrushChange}
               onBrushStart={handleMouseDown}
               onBrushEnd={handleMouseUp}
