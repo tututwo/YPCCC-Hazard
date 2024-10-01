@@ -281,7 +281,10 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       <>
         <Canvas
           dpr={Math.min(window.devicePixelRatio, 2)}
-          gl={{ antialias: true }}
+          gl={{ alpha: true, premultipliedAlpha: false }} 
+          onCreated={({ gl }) => {
+            gl.setClearColor(0xffffff, 0); // Set the clear color to transparent
+          }}
           style={{
             background: "transparent",
             position: "absolute",
@@ -320,7 +323,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             colorVariable={colorVariable}
             margin={margin}
           />
-          <axesHelper args={[1000]} />
+          {/* <axesHelper args={[1000]} /> */}
           {/* <EffectComposer>
             <Bloom
               luminanceThreshold={0.1}
@@ -392,8 +395,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             top={margin.top}
             onPointerMove={handleMouseMove}
             onPointerLeave={handleMouseLeave}
-            // onPointerDown={handleMouseDown}
-            // onPointerUp={handleMouseUp}
+   
           >
             {hoveredPoint && (
               <circle

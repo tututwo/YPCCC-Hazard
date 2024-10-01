@@ -25,6 +25,9 @@ uniform float radiusScale;
 uniform float radiusMinPixels;
 uniform float radiusMaxPixels;
 uniform bool billboard;
+uniform bool antialiasing;
+
+const float SMOOTH_EDGE_RADIUS = .5;
 
 void main() {
   // Compute the scaled and clamped radius
@@ -35,8 +38,11 @@ void main() {
     radiusMaxPixels
   );
 
-  // Position within the unit square [-1, 1]
-  vUnitPosition = position.xy;
+  // Edge padding to accommodate smoothing
+  float edgePadding = (vOuterRadiusPixels + SMOOTH_EDGE_RADIUS) / vOuterRadiusPixels;
+
+  // Position within the unit square [-1, 1], scaled by edge padding
+  vUnitPosition = edgePadding * position.xy;
 
   // Pass color and animation progress to fragment shader
   vOriginalColor = instanceColor;
@@ -44,7 +50,7 @@ void main() {
   vAnimationProgress = instanceAnimationProgress;
 
   // Calculate offset
-  vec3 offset = position * vOuterRadiusPixels;
+  vec3 offset = position * vOuterRadiusPixels * edgePadding;
 
   vec4 mvPosition = modelViewMatrix * vec4(instancePosition, 1.0);
 
@@ -68,8 +74,14 @@ varying vec2 vUnitPosition;
 varying float vOuterRadiusPixels;
 varying float vAnimationProgress;
 
+const float SMOOTH_EDGE_RADIUS = 0.5;
+
+float smoothedge(float edge, float x) {
+  return smoothstep(edge - SMOOTH_EDGE_RADIUS, edge + SMOOTH_EDGE_RADIUS, x);
+}
+
 void main() {
-  // Calculate distance from center
+  // Adjusted distance calculation
   float dist = length(vUnitPosition) * vOuterRadiusPixels;
 
   // Define radii for inner circle and rings
@@ -77,15 +89,16 @@ void main() {
   float middleRadius = vOuterRadiusPixels * 0.7;
   float outerRadius = vOuterRadiusPixels;
 
-  // Edge smoothing factor
-  float edgeWidth = fwidth(dist) * 0.4;
+  // Increase size for selected circles
+  float sizeMultiplier = mix(1.0, 1.1, vAnimationProgress);
+  innerRadius *= sizeMultiplier;
+  middleRadius *= sizeMultiplier;
+  outerRadius *= sizeMultiplier;
 
-  // Calculate smooth transitions
-  float innerCircle = 1.0 - smoothstep(innerRadius - edgeWidth, innerRadius + edgeWidth, dist);
-  float whiteRing = smoothstep(innerRadius - edgeWidth, innerRadius + edgeWidth, dist) -
-                    smoothstep(middleRadius - edgeWidth, middleRadius + edgeWidth, dist);
-  float outerRing = smoothstep(middleRadius - edgeWidth, middleRadius + edgeWidth, dist) -
-                    smoothstep(outerRadius - edgeWidth, outerRadius + edgeWidth, dist);
+  // Calculate smooth transitions using smoothedge
+  float innerCircle = 1.0 - smoothedge(innerRadius, dist);
+  float whiteRing = smoothedge(innerRadius, dist) - smoothedge(middleRadius, dist);
+  float outerRing = smoothedge(middleRadius, dist) - smoothedge(outerRadius, dist);
 
   // Combine colors
   vec3 finalColor = vColor * (innerCircle + outerRing) + vec3(1.0) * whiteRing;
@@ -94,10 +107,11 @@ void main() {
   vec3 color = mix(vOriginalColor, finalColor, vAnimationProgress);
 
   float alpha = innerCircle + whiteRing + outerRing;
+ alpha = max(alpha, 0.01);
 
-  if (alpha < .01) discard;
+   float finalAlpha = mix(alpha * 0.8,alpha, vAnimationProgress);
 
-  gl_FragColor = vec4(color, alpha * 0.77);
+  gl_FragColor = vec4(color, finalAlpha);
 }
 `;
 
@@ -241,12 +255,16 @@ export const Particles = ({
   return (
     <>
       {!isDataLoaded || data.length === 0 ? null : (
-        <instancedMesh ref={meshRef} args={[null, null, data.length]}>
+        <instancedMesh
+          ref={meshRef}
+          args={[null, null, data.length]}
+          renderOrder={2}
+        >
           <planeGeometry args={[4, 4]} />
           <particleMaterial
             ref={materialRef}
             transparent
-            depthTest={false}
+            depthTest={true}
             depthWrite={false}
             side={THREE.DoubleSide}
           />
