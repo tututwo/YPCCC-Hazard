@@ -21,15 +21,22 @@ import { Group } from "@visx/group";
 
 import { withTooltip } from "@visx/tooltip";
 import { WithTooltipProvidedProps } from "@visx/tooltip/lib/enhancers/withTooltip";
-import { voronoi, VoronoiPolygon } from "@visx/voronoi";
+
 import { localPoint } from "@visx/event";
 import { AxisLeft, AxisBottom } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
-import Brush from "./brush-components/Brush";
 
 import Tooltip from "@/components/ui/tooltip";
-// Add these constants for your color scales
 
+// NOTE: R3F
+import { Canvas } from "@react-three/fiber";
+
+import { OrbitControls, OrthographicCamera } from "@react-three/drei";
+import { Particles } from "./scatterplot-r3f/Scatterplot-R3f";
+// import { EffectComposer, Bloom } from "@react-three/postprocessing";
+
+// Add these constants for your color scales
+import { twoSigFigFormatter, search } from "@/lib/utils";
 const tickLabelProps = {
   fill: "#222",
   fontFamily: "Roboto",
@@ -37,61 +44,9 @@ const tickLabelProps = {
   textAnchor: "middle",
   fillOpacity: 0.5,
 };
-let tooltipTimeout: number;
-const twoSigFigFormatter = d3.format(".2r");
 
-const margin = { top: 10, right: 80, bottom: 60, left: 60 };
-gsap.registerPlugin(useGSAP);
-function drawPoints(
-  canvas,
-  dataset,
-  selectedCounties,
-  xVariable,
-  yVariable,
-  colorVariable,
-  xScale,
-  yScale,
-  colorScale
-) {
-  const ctx = canvas.getContext("2d");
+const margin = { top: 20, right: 40, bottom: 60, left: 60 };
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  dataset.forEach((d) => {
-    const isHighlighted = d.isBrushed || selectedCounties.includes(d.geoid);
-
-    // NOTE: Larger circle
-    if (isHighlighted) {
-      ctx.beginPath();
-      // circle merge?
-      ctx.arc(
-        xScale(d[xVariable]),
-        yScale(d[yVariable]),
-        d.radius * 1.4,
-        0,
-        2 * Math.PI
-      );
-      ctx.fillStyle = "white";
-      ctx.fill();
-      ctx.strokeStyle = colorScale(d[colorVariable]);
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-    // NOTE: Smaller circle
-
-    // ctx.globalCompositeOperation = "screen";
-    ctx.globalAlpha = isHighlighted ? 1 : 0.8;
-    ctx.beginPath();
-    ctx.arc(
-      xScale(d[xVariable]),
-      yScale(d[yVariable]),
-      d.radius,
-      0,
-      2 * Math.PI
-    );
-    ctx.fillStyle = colorScale(d[colorVariable]);
-    ctx.fill();
-  });
-}
 export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   ({
     data,
@@ -110,15 +65,12 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
   }: DotsProps & WithTooltipProvidedProps<PointsRange>) => {
     const svgRef = useRef(null);
     const brushRef = useRef<any>(null);
-    const foregroundCanvasRef = useRef(null);
-    const backgroundCanvasRef = useRef(null);
 
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
-    const xMax = width - margin.left;
-    const yMax = height - margin.bottom;
+    const xMax = width - margin.left - margin.right;
+    const yMax = height - margin.bottom - margin.top;
     const [isBrushing, setIsBrushing] = useState(false);
-
     // FIXME: This is really slow. Improve it
     const [hoveredPoint, setHoveredPoint] = useState(null);
     const {
@@ -133,18 +85,20 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     const x = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[xVariable]) as [number, number],
-          range: [margin.left, width - margin.right],
-          clamp: false,
+          domain: [0, 105],
+          // range: [-200, 200],
+          range: [0, xMax],
+          clamp: true,
         }),
       [data, width]
     );
     const y = useMemo(
       () =>
         scaleLinear<number>({
-          domain: d3.extent(data, (d) => d[yVariable]) as [number, number],
-          range: [height - margin.bottom, margin.top],
-          clamp: false,
+          domain: [10, 75],
+          // range: [-100, 100],
+          range: [yMax, 0],
+          clamp: true,
         }),
       [data, height]
     );
@@ -156,40 +110,17 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         color: colorScale(d[colorVariable]),
       }));
     }, [data, colorScale, colorVariable]);
+
     // Memoize coloredAndRaisedData
     const coloredAndRaisedData = useMemo(() => {
       let result = coloredData;
-      // if (hoveredPointId) {
-      //   const index = result.findIndex((d) => d.geoid === hoveredPointId);
-      //   if (index !== -1) {
-      //     result = raise(result, index);
-      //   }
-      // }
 
       return result;
     }, [coloredData]);
 
     const { contextSafe } = useGSAP(
       // draw foreground canvas
-      () => {
-        const drawCanvas = () => {
-          drawPoints(
-            foregroundCanvasRef.current,
-            coloredAndRaisedData,
-            selectedCounties,
-            xVariable,
-            yVariable,
-            colorVariable,
-            x,
-            y,
-            colorScale
-          );
-        };
-        gsap.ticker.add(drawCanvas);
-        return () => {
-          gsap.ticker.remove(drawCanvas);
-        };
-      },
+      () => {},
       { dependencies: [coloredAndRaisedData, width, height] }
     );
 
@@ -203,10 +134,6 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         (d) => y(d[yVariable])
       );
     }, [coloredAndRaisedData, x, y, xVariable, yVariable]);
-
-    const voronoi = useMemo(() => {
-      return delaunay.voronoi([0, 0, width, height]);
-    }, [delaunay, width, height]);
 
     const handleMouseMove = useCallback(
       (event) => {
@@ -249,110 +176,148 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
       // setIsBrushing(false);
     }, []); // Add dependencies here
 
-    const radiusQuickSetters = useMemo(() => {
-      return coloredAndRaisedData.map((d) => ({
-        geoid: d.geoid,
-        setRadius: gsap.quickTo(d, "radius", {
-          duration: 0.1,
-          ease: "power2.inOut",
-        }),
-      }));
-    }, [coloredAndRaisedData]);
+    // Initialize brush
 
-    const handleBrushChange = contextSafe((domain: Bounds | null) => {
-      if (!domain) return;
+    const quadtree = useMemo(() => {
+      return d3
+        .quadtree()
+        .x((d) => x(d[xVariable]))
+        .y((d) => y(d[yVariable]))
+        .addAll(coloredAndRaisedData);
+    }, [coloredAndRaisedData, xVariable, yVariable, width, height]);
+    const brushing = useRef(false);
 
-      const { x0, x1, y0, y1 } = domain;
-      const selectedPointsSet = new Set<string>();
+    const brushed = useCallback(
+      contextSafe((event: any) => {
+        brushing.current = true;
 
-      coloredAndRaisedData.forEach((d) => {
-        const isBrushed =
-          d[xVariable] >= x0 &&
-          d[xVariable] <= x1 &&
-          d[yVariable] >= y0 &&
-          d[yVariable] <= y1;
+        if (event.selection && quadtree) {
+          const [[x0, y0], [x1, y1]] = event.selection;
+          const selected: any[] = [];
 
-        d.isBrushed = isBrushed;
+          // No need to transform coordinates, as they're already in the same space
+          search(
+            quadtree,
+            [
+              [x0, y0],
+              [x1, y1],
+            ],
+            [],
+            selected,
+            x,
+            y,
+            xVariable,
+            yVariable
+          );
 
-        // Find the quickSetter for this data point
-        const quickSetter = radiusQuickSetters.find((s) => s.geoid === d.geoid);
-        // Use quickTo for both entrance and exit animations
-        if (quickSetter) {
-          quickSetter.setRadius(isBrushed ? 6 : 3);
+          const selectedSet = new Set(selected.map((d) => d.geoid));
+
+          // Update global state with selected counties
+          updateSelectedCounties(Array.from(selectedSet));
+        } else {
+          // No selection, reset all
+          updateSelectedCounties([]);
         }
-
-        if (isBrushed) {
-          selectedPointsSet.add(d.geoid);
-        }
-      });
-
-      // Update state
-
-      updateSelectedCounties(Array.from(selectedPointsSet));
-    });
-
-    const handleCanvasClick = useCallback(() => {
-      // Reset the brushed state
-      coloredAndRaisedData.forEach((d) => {
-        d.isBrushed = false;
-        d.radius = 3; // Reset radius to initial value
-      });
-
-      // Kill all GSAP animations related to data points
-      gsap.killTweensOf(coloredAndRaisedData);
-
-      // Update state to reflect no selection
-
-      setBrushedCircles(new Set());
-      updateSelectedCounties([]);
-
-      // Redraw the canvas
-      drawPoints(
-        foregroundCanvasRef.current,
-        coloredAndRaisedData,
-        selectedCounties,
-        xVariable,
-        yVariable,
-        colorVariable,
-        x,
-        y,
-        colorScale
-      );
-    }, [
-      coloredAndRaisedData,
-      selectedCounties,
-      xVariable,
-      yVariable,
-      colorVariable,
-      x,
-      y,
-      colorScale,
-
-      updateSelectedCounties,
-      foregroundCanvasRef,
-    ]);
-
-    const selectedBoxStyle = useMemo(
-      () => ({
-        fill: "#A7BDD3",
-        // fillOpacity: selectedState.id === 0 ? 0.08 : 0,
-        fillOpacity: 0.08,
-        stroke: "#12375A",
-        strokeWidth: 1,
-        // strokeOpacity: selectedState.id === 0 ? 0.8 : 0,
-        strokeOpacity: 0.8,
       }),
-      [selectedState]
+      [updateSelectedCounties, quadtree]
     );
+
+    const brushended = useCallback(
+      contextSafe((event: any) => {
+        brushing.current = false;
+      }),
+      [contextSafe]
+    );
+    const brush = useMemo(
+      () =>
+        d3
+          .brush()
+          .extent([
+            [margin.left, margin.top],
+            [width - margin.right, height - margin.bottom],
+          ])
+          .on("start brush", brushed)
+          .on("end", brushended),
+      [width, height, brushed, brushended]
+    );
+
+    useEffect(() => {
+      // Build quadtree for efficient searching
+
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.select("g#brush-layer").call(brush);
+
+        svg
+          .select(".selection")
+          .attr("fill", "#A7BDD3")
+          .attr("fill-opacity", 0.08)
+          .attr("stroke", "#12375A")
+          .attr("stroke-width", 1)
+          .attr("stroke-opacity", 0.8);
+
+        svg.selectAll(".handle").attr("fill", "#000").attr("fill-opacity", 0.2);
+
+        svg
+          .select(".overlay")
+          .attr("pointer-events", "all")
+          .attr("fill", "none");
+        svg.selectAll(".handle").attr("fill", "none");
+      }
+    }, [width, height]);
+
     return (
       <>
-        <canvas
-          ref={foregroundCanvasRef}
-          width={width - margin.left}
-          height={height - margin.top}
-          className="absolute z-10"
-          style={{ top: margin.top + "px", left: margin.left + "px" }}
-        ></canvas>
+        <Canvas
+          dpr={window.devicePixelRatio}
+          style={{
+            background: "transparent",
+            position: "absolute",
+            width: xMax,
+            height: yMax,
+            top: margin.top,
+            left: margin.left,
+            zIndex: 10,
+          }}
+        >
+          {/* <color attach="background" args={["black"]} /> */}
+          <OrthographicCamera
+            makeDefault
+            zoom={1}
+            top={innerHeight}
+            bottom={0}
+            left={0}
+            right={innerWidth}
+            near={-1000}
+            far={1000}
+            position={[xMax / 2, yMax / 2, 500]}
+          />
+          <OrbitControls
+            makeDefault
+            target={[xMax / 2, yMax / 2, 0]}
+            enableRotate={true}
+            enableZoom={true}
+            enablePan={true}
+          />
+          <Particles
+            data={data}
+            xScale={x}
+            yScale={y}
+            xVariable={xVariable}
+            yVariable={yVariable}
+            colorVariable={colorVariable}
+            margin={margin}
+          />
+          <axesHelper args={[1000]} />
+          {/* <EffectComposer>
+            <Bloom
+              luminanceThreshold={0.1}
+              intensity={0.1}
+              levels={9}
+              mipmapBlur
+            />
+          </EffectComposer> */}
+        </Canvas>
         <svg
           width={width}
           className="absolute  h-full"
@@ -408,27 +373,16 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             maxHeight: height,
             cursor: isBrushing ? "crosshair" : "pointer",
           }}
-       
         >
-          <Group left={margin.left} top={margin.top}>
-            <Brush
-              ref={brushRef}
-              xScale={x}
-              yScale={y}
-              width={width - margin.left}
-              height={innerHeight}
-              margin={margin}
-              handleSize={8}
-              resizeTriggerAreas={["left", "right", "top", "bottom", "center"]}
-              brushDirection="both"
-              initialBrushPosition={null}
-              onClick={handleCanvasClick}
-              onChange={handleBrushChange}
-              onBrushStart={handleMouseDown}
-              onBrushEnd={handleMouseUp}
-              useWindowMoveEvents
-              selectedBoxStyle={selectedBoxStyle}
-            />
+          <Group
+            id="brush-layer"
+            left={margin.left}
+            top={margin.top}
+            onPointerMove={handleMouseMove}
+            onPointerLeave={handleMouseLeave}
+            // onPointerDown={handleMouseDown}
+            // onPointerUp={handleMouseUp}
+          >
             {hoveredPoint && (
               <circle
                 cx={x(hoveredPoint[xVariable])}

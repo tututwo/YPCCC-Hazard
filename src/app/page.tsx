@@ -179,7 +179,9 @@ export default function Home() {
             className="mt-4 flex-grow flex flex-col h-[400px] desktop:h-auto"
             id="scatterplot-container"
           >
-            <h2 className="text-lg font-bold ml-8">Heat worry and Heat rating of all counties</h2>
+            <h2 className="text-lg font-bold ml-8">
+              Heat worry and Heat rating of all counties
+            </h2>
             <figure className="w-full flex-grow">
               <ParentSize>
                 {({ width, height, top, left }) => {

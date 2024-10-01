@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import download from "@/../public/download.json";
+import lottie from "lottie-web";
+import { useRef, useEffect, useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -8,11 +10,41 @@ import {
 } from "@/components/ui/popover";
 
 export default function PopoverDemo() {
+  const containerRef = useRef<HTMLButtonElement>(null);
+
+  const [animation, setAnimation] = useState<any>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      // Clear any previous content
+      containerRef.current.innerHTML = "";
+
+      const anim = lottie.loadAnimation({
+        container: containerRef.current,
+        renderer: "svg",
+        loop: false,
+        autoplay: false,
+        animationData: download,
+      });
+      setAnimation(anim);
+
+      return () => {
+        anim.destroy();
+      };
+    }
+  }, []);
+
+  const handleDownloadClick = () => {
+    if (animation) {
+      animation.goToAndPlay(0);
+    }
+  };
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" className="w-full flex text-sm py-1">
-          <svg
+          <div ref={containerRef} className="w-6 h-6 mr-2"></div>
+          {/* <svg
             width="15"
             height="15"
             viewBox="0 0 15 15"
@@ -26,7 +58,7 @@ export default function PopoverDemo() {
               fillRule="evenodd"
               clipRule="evenodd"
             ></path>
-          </svg>
+          </svg> */}
           &nbsp;&nbsp;Download Data
         </Button>
       </PopoverTrigger>
@@ -39,13 +71,15 @@ export default function PopoverDemo() {
             </p>
           </div>
           <div className="flex flex-col gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownloadClick}>
               <div className="flex flex-col text-sm">
                 <h1>Entire Country</h1>
-                <p className="text-xs text-muted-foreground font-light">1.5MB</p>
+                <p className="text-xs text-muted-foreground font-light">
+                  1.5MB
+                </p>
               </div>
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleDownloadClick}>
               <div className="flex flex-col text-sm">
                 <h1>Selected Counties Only</h1>
                 <p className="text-xs text-muted-foreground font-light">29KB</p>
