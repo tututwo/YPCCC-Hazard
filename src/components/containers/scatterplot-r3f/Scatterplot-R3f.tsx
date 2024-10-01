@@ -1,4 +1,5 @@
 // @ts-nocheck
+"use client";
 import React, { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
@@ -77,7 +78,7 @@ void main() {
   float outerRadius = vOuterRadiusPixels;
 
   // Edge smoothing factor
-  float edgeWidth = fwidth(dist) * 1.5;
+  float edgeWidth = fwidth(dist) * 0.4;
 
   // Calculate smooth transitions
   float innerCircle = 1.0 - smoothstep(innerRadius - edgeWidth, innerRadius + edgeWidth, dist);
@@ -129,8 +130,9 @@ export const Particles = ({
     colorScale,
     selectedCounties,
     updateSelectedCounties,
+    isDataLoaded,
   } = useMapStore();
-
+  const particlesToUpdateRef = useRef<Set<number>>(new Set());
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const materialRef = useRef<ParticleMaterial>(null);
   const instanceAnimationProgressRef = useRef(new Float32Array(data.length));
@@ -182,36 +184,53 @@ export const Particles = ({
     yVariable,
     colorVariable,
     colorScale,
+
     // selectedCounties,
   ]);
+
   useEffect(() => {
     const selectedSet = new Set(selectedCounties);
 
     for (let i = 0; i < data.length; i++) {
-      targetSelectedRef.current[i] = selectedSet.has(data[i].geoid) ? 1.0 : 0.0;
+      const isSelected = selectedSet.has(data[i].geoid) ? 1.0 : 0.0;
+      if (targetSelectedRef.current[i] !== isSelected) {
+        targetSelectedRef.current[i] = isSelected;
+        particlesToUpdateRef.current.add(i);
+      }
     }
   }, [selectedCounties, data]);
-
   useFrame((state, delta) => {
+    if (particlesToUpdateRef.current.size === 0) {
+      // No particles to update
+      return;
+    }
+
     let needsUpdate = false;
     const animationProgress = instanceAnimationProgressRef.current;
     const targetSelected = targetSelectedRef.current;
+    const indicesToRemove: number[] = [];
 
-    for (let i = 0; i < data.length; i++) {
+    particlesToUpdateRef.current.forEach((i) => {
       const target = targetSelected[i];
       const current = animationProgress[i];
 
       if (current !== target) {
         needsUpdate = true;
 
-        const deltaProgress = delta * 2.0; // Adjust speed
+        const deltaProgress = delta * 2.0; // Adjust speed as needed
         if (current < target) {
           animationProgress[i] = Math.min(current + deltaProgress, target);
         } else {
           animationProgress[i] = Math.max(current - deltaProgress, target);
         }
+      } else {
+        // Animation reached target, remove from set
+        indicesToRemove.push(i);
       }
-    }
+    });
+
+    // Remove indices that no longer need updating
+    indicesToRemove.forEach((i) => particlesToUpdateRef.current.delete(i));
 
     if (needsUpdate && meshRef.current) {
       meshRef.current.geometry.attributes.instanceAnimationProgress.needsUpdate =
@@ -220,31 +239,35 @@ export const Particles = ({
   });
 
   return (
-    <instancedMesh ref={meshRef} args={[null, null, data.length]}>
-      <planeGeometry args={[4, 4]} />
-      <particleMaterial
-        ref={materialRef}
-        transparent
-        depthTest={false}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-      />
-      <instancedBufferAttribute
-        attach="geometry-attributes-instancePosition"
-        args={[positions, 3]}
-      />
-      <instancedBufferAttribute
-        attach="geometry-attributes-instanceColor"
-        args={[colors, 3]}
-      />
-      <instancedBufferAttribute
-        attach="geometry-attributes-instanceRadius"
-        args={[radii, 1]}
-      />
-      <instancedBufferAttribute
-        attach="geometry-attributes-instanceAnimationProgress"
-        args={[instanceAnimationProgressRef.current, 1]}
-      />
-    </instancedMesh>
+    <>
+      {!isDataLoaded || data.length === 0 ? null : (
+        <instancedMesh ref={meshRef} args={[null, null, data.length]}>
+          <planeGeometry args={[4, 4]} />
+          <particleMaterial
+            ref={materialRef}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+          <instancedBufferAttribute
+            attach="geometry-attributes-instancePosition"
+            args={[positions, 3]}
+          />
+          <instancedBufferAttribute
+            attach="geometry-attributes-instanceColor"
+            args={[colors, 3]}
+          />
+          <instancedBufferAttribute
+            attach="geometry-attributes-instanceRadius"
+            args={[radii, 1]}
+          />
+          <instancedBufferAttribute
+            attach="geometry-attributes-instanceAnimationProgress"
+            args={[instanceAnimationProgressRef.current, 1]}
+          />
+        </instancedMesh>
+      )}
+    </>
   );
 };

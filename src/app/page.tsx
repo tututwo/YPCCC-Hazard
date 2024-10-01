@@ -50,6 +50,7 @@ import ExpandButton from "@/components/ui/expandButton";
 
 import DownloadButton from "@/components/containers/DownloadButton";
 import { HeatGapHeader } from "@/components/containers/Header";
+import { LoadingComponent } from "@/components/containers/LoadingComponent";
 // NOTE: Styles
 import "../styles/InputButton.css";
 import { useMapStore } from "@/lib/store";
@@ -92,12 +93,12 @@ gsap.registerPlugin(useGSAP);
 //   { ssr: false }
 // );
 export default function Home() {
-  const { data, filteredData } = useMapStore();
+  const { data, filteredData, isDataLoaded } = useMapStore();
 
   const [isDesktop, setIsDesktop] = useState(false);
   // const [data, setData] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(true);
   // NOTE: Parent size for the deckgl map
   const { parentRef, width, height } = useParentSize();
 
@@ -113,114 +114,130 @@ export default function Home() {
     setIsDesktop(window.innerWidth >= 820);
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <>
-      <Input
-        id="sidebar-toggle"
-        type="checkbox"
-        title="Toggle sidebar"
-        onClick={handleMouseEnter}
-        overrideClassName
-        className="z-50"
-      />
-      <ExpandableSection
-        isExpanded={isExpanded}
-        isDesktop={isDesktop}
-        categories={categories}
-      ></ExpandableSection>
+      {false ? (
+        <LoadingComponent />
+      ) : (
+        <>
+          <Input
+            id="sidebar-toggle"
+            type="checkbox"
+            title="Toggle sidebar"
+            onClick={handleMouseEnter}
+            overrideClassName
+            className="z-50"
+          />
+          <ExpandableSection
+            isExpanded={isExpanded}
+            isDesktop={isDesktop}
+            categories={categories}
+          ></ExpandableSection>
 
-      <header className="w-full bg-[#D2E4F6] mb-4">
-        <HeatGapHeader />
-      </header>
-      <main className="flex-grow desktop:h-[900px] flex flex-col desktop:flex-nowrap w-full  relative pr-10 pl-6 ">
-        {/* IMPORTANT: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
-        {/* NOTE:Map Section */}
-        <section
-          className="w-full min-h-[400px] max-h-[600px] desktop:flex-grow desktop:flex-shrink flex flex-col desktop:flex-row gap-4"
-          onMouseEnter={handleMouseLeave}
-        >
-          {/* NOTE:Actual Map */}
-          <figure ref={parentRef} className="flex-grow h-full relative z-10 ">
-            <DeckglMap
-              width={width}
-              height={height}
-              zoomToWhichState={zoomToWhichState}
-              zoomToWhichCounty={zoomToWhichCounty}
-              geographyData={counties}
-              colorVariable={colorVariable}
-              xVariable={xVariable}
-              yVariable={yVariable}
-            />
-          </figure>
+          <header className="w-full bg-[#D2E4F6] mb-4">
+            <HeatGapHeader />
+          </header>
+          <main className="flex-grow desktop:h-[900px] flex flex-col desktop:flex-nowrap w-full  relative pr-10 pl-6 ">
+            {/* IMPORTANT: This `flex-grow` here maintains the flex layout, eg. footer stays at the bottom, as overall height growing while the content grows on other parts */}
+            {/* NOTE:Map Section */}
+            <section
+              className="w-full min-h-[400px] max-h-[600px] desktop:flex-grow desktop:flex-shrink flex flex-col desktop:flex-row gap-4"
+              onMouseEnter={handleMouseLeave}
+            >
+              {/* NOTE:Actual Map */}
+              <figure
+                ref={parentRef}
+                className="flex-grow h-full relative z-10 "
+              >
+                <DeckglMap
+                  width={width}
+                  height={height}
+                  zoomToWhichState={zoomToWhichState}
+                  zoomToWhichCounty={zoomToWhichCounty}
+                  geographyData={counties}
+                  colorVariable={colorVariable}
+                  xVariable={xVariable}
+                  yVariable={yVariable}
+                />
+              </figure>
 
-          {/*NOTE: Legend */}
-          {isDesktop && (
-            <div className="legend desktop:w-[144px]">
-              <ParentSize>
-                {({ width, height }) => (
-                  <LegendResponsive
-                    colors={colors}
-                    data={data}
-                    colorVariable={colorVariable}
-                    width={width}
-                    height={height}
-                  />
-                )}
-              </ParentSize>
-            </div>
-          )}
-        </section>
+              {/*NOTE: Legend */}
+              {isDesktop && (
+                <div className="legend desktop:w-[144px]">
+                  <ParentSize>
+                    {({ width, height }) => (
+                      <LegendResponsive
+                        colors={colors}
+                        data={data}
+                        colorVariable={colorVariable}
+                        width={width}
+                        height={height}
+                      />
+                    )}
+                  </ParentSize>
+                </div>
+              )}
+            </section>
 
-        {/* Table + Plots Section */}
+            {/* Table + Plots Section */}
 
-        <section className="min-h-[400px] w-full flex-grow flex flex-col desktop:flex-row gap-2">
-          {/* NOTE: Scatterplot */}
-          <div
-            className="mt-4 flex-grow flex flex-col h-[400px] desktop:h-auto"
-            id="scatterplot-container"
-          >
-            <h2 className="text-lg font-bold ml-8">
-              Heat worry and Heat rating of all counties
-            </h2>
-            <figure className="w-full flex-grow">
-              <ParentSize>
-                {({ width, height, top, left }) => {
-                  return (
-                    <Scatterplot
-                      data={filteredData}
-                      width={width}
-                      height={height}
-                      xVariable={xVariable}
-                      yVariable={yVariable}
-                      colorVariable={colorVariable}
-                    ></Scatterplot>
-                  );
-                }}
-              </ParentSize>
-            </figure>
-          </div>
+            <section className="min-h-[400px] w-full flex-grow flex flex-col desktop:flex-row gap-2">
+              {/* NOTE: Scatterplot */}
+              <div
+                className="mt-4 flex-grow flex flex-col h-[400px] desktop:h-auto"
+                id="scatterplot-container"
+              >
+                <h2 className="text-lg font-bold ml-8">
+                  Heat worry and Heat rating of all counties
+                </h2>
+                <figure className="w-full flex-grow">
+                  <ParentSize>
+                    {({ width, height, top, left }) => {
+                      return (
+                        <Scatterplot
+                          data={filteredData}
+                          width={width}
+                          height={height}
+                          xVariable={xVariable}
+                          yVariable={yVariable}
+                          colorVariable={colorVariable}
+                        ></Scatterplot>
+                      );
+                    }}
+                  </ParentSize>
+                </figure>
+              </div>
 
-          <aside className="w-full desktop:w-2/5 flex-shrink-0 pr-1 flex flex-col">
-            <div className="table-container grow overflow-hidden max-h-[800px]">
-              <ParentSize>
-                {({ width, height }) => {
-                  return (
-                    <DataTableDemo
-                      data={data}
-                      height={height}
-                      xVariable={xVariable}
-                      yVariable={yVariable}
-                      colorVariable={colorVariable}
-                    ></DataTableDemo>
-                  );
-                }}
-              </ParentSize>
-            </div>
+              <aside className="w-full desktop:w-2/5 flex-shrink-0 pr-1 flex flex-col">
+                <div className="table-container grow overflow-hidden max-h-[800px]">
+                  <ParentSize>
+                    {({ width, height }) => {
+                      return (
+                        <DataTableDemo
+                          data={data}
+                          height={height}
+                          xVariable={xVariable}
+                          yVariable={yVariable}
+                          colorVariable={colorVariable}
+                        ></DataTableDemo>
+                      );
+                    }}
+                  </ParentSize>
+                </div>
 
-            <DownloadButton />
-          </aside>
-        </section>
-      </main>
+                <DownloadButton />
+              </aside>
+            </section>
+          </main>
+        </>
+      )}
     </>
   );
 }

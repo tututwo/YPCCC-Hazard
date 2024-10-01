@@ -5,16 +5,16 @@ import { csv } from "d3-fetch";
 const createColorScale = () => {
   const domain = [-1, 1]; // Min and max of your domain
   const range = [
-    "#11375A",
-    "#4E6C8A",
-    "#7590AB",
-    "#A7BDD3",
-    "#D2E4F6",
-    "#FBCFDA",
-    "#E69FB0",
-    "#D6798F",
-    "#C6536F",
-    "#AE1C3E",
+    "#505965",
+    "#6D7881",
+    "#8F979B",
+    "#B4B8B8",
+    "#D9D9D9",
+    "#FFCEC8",
+    "#FD9F8C",
+    "#F36F5F",
+    "#DE3C47",
+    "#B11B42",
   ];
 
   // @ts-ignore
@@ -12810,7 +12810,8 @@ const initializeStore = (
   ...state,
   setSelectedState: (state: US_State) => {
     const { data } = get();
-    const filtered = state.name === "US" ? data : data.filter((d) => d.state === state.name);
+    const filtered =
+      state.name === "US" ? data : data.filter((d) => d.state === state.name);
     set({ filteredData: filtered, selectedState: state });
   },
 
@@ -12818,17 +12819,21 @@ const initializeStore = (
     set({ selectedZoomCounty: county });
   },
 
-  updateSelectedCounties: (counties: County[]) => set({ selectedCounties: counties }),
+  updateSelectedCounties: (counties: County[]) =>
+    set({ selectedCounties: counties }),
 
   filterDataByState: (stateName: string) => {
     const { data } = get();
-    const filtered = stateName === "US" ? data : data.filter((d) => d.state === stateName);
+    const filtered =
+      stateName === "US" ? data : data.filter((d) => d.state === stateName);
     set({ filteredData: filtered });
   },
 });
 
 const mapStore = createStore<IStoreState>(initializeStore);
-export const useMapStore = (selector: (state: IStoreState) => IStoreState = (x) => x) => {
+export const useMapStore = (
+  selector: (state: IStoreState) => IStoreState = (x) => x
+) => {
   return useStore(mapStore, selector);
 };
 
@@ -12848,7 +12853,11 @@ export async function reloadMapStoreData() {
     radius: 3,
     isBrushed: false,
   }));
-  mapStore.setState({ data: processedData, filteredData: processedData });
+  mapStore.setState({
+    data: processedData,
+    filteredData: processedData,
+    isDataLoaded: true,
+  });
   initSyncSearchParams();
 }
 
@@ -12875,21 +12884,29 @@ mapStore.subscribe(({ selectedState, selectedZoomCounty }) => {
 });
 
 const REGEX_NUMBER = /^\d+$/;
-export function syncSearchParamsToStore(params: { state: string; county: string }) {
-  let { data, filteredData, selectedState, selectedZoomCounty } = mapStore.getState();
+export function syncSearchParamsToStore(params: {
+  state: string;
+  county: string;
+}) {
+  let { data, filteredData, selectedState, selectedZoomCounty } =
+    mapStore.getState();
 
   if (REGEX_NUMBER.test(params.state)) {
     const found = sortedUSStates.find((s) => s.id === +params.state);
     if (found) {
       const filtered =
-        selectedState.name === "US" ? data : data.filter((d) => d.state === selectedState.name);
+        selectedState.name === "US"
+          ? data
+          : data.filter((d) => d.state === selectedState.name);
       filteredData = filtered;
       selectedState = found;
     }
   }
 
   if (REGEX_NUMBER.test(params.county)) {
-    const found = selectedState?.counties?.find((c) => c.geoID === params.county);
+    const found = selectedState?.counties?.find(
+      (c) => c.geoID === params.county
+    );
     if (found) selectedZoomCounty = found;
   }
 
@@ -12916,7 +12933,9 @@ export function updateSearchParams(params: Record<string, string | null>) {
     }
   });
   if (changed) {
-    const newPathname = `${window.location.pathname}?${newSearchParams.toString()}`;
+    const newPathname = `${
+      window.location.pathname
+    }?${newSearchParams.toString()}`;
     window.history.pushState(null, "", newPathname);
   }
 }

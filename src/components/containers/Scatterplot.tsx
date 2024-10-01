@@ -34,7 +34,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Particles } from "./scatterplot-r3f/Scatterplot-R3f";
 // import { EffectComposer, Bloom } from "@react-three/postprocessing";
-
+import { useThrottledCallback } from 'use-debounce';
 // Add these constants for your color scales
 import { twoSigFigFormatter, search } from "@/lib/utils";
 const tickLabelProps = {
@@ -186,16 +186,18 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         .addAll(coloredAndRaisedData);
     }, [coloredAndRaisedData, xVariable, yVariable, width, height]);
     const brushing = useRef(false);
-
+    const throttledUpdateSelectedCounties = useThrottledCallback(
+      (newSelectedCounties: string[]) => {
+        updateSelectedCounties(newSelectedCounties);
+      },
+      100 // Throttle updates to once every 100ms
+    );
     const brushed = useCallback(
       contextSafe((event: any) => {
-        brushing.current = true;
-
         if (event.selection && quadtree) {
           const [[x0, y0], [x1, y1]] = event.selection;
           const selected: any[] = [];
-
-          // No need to transform coordinates, as they're already in the same space
+    
           search(
             quadtree,
             [
@@ -209,17 +211,26 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
             xVariable,
             yVariable
           );
-
+    
           const selectedSet = new Set(selected.map((d) => d.geoid));
-
-          // Update global state with selected counties
-          updateSelectedCounties(Array.from(selectedSet));
+    
+          // Use the throttled function
+          throttledUpdateSelectedCounties(Array.from(selectedSet));
         } else {
-          // No selection, reset all
+          // Cancel any pending updates and reset selection
+          throttledUpdateSelectedCounties.cancel();
           updateSelectedCounties([]);
         }
       }),
-      [updateSelectedCounties, quadtree]
+      [
+        quadtree,
+        x,
+        y,
+        xVariable,
+        yVariable,
+        throttledUpdateSelectedCounties,
+        updateSelectedCounties,
+      ]
     );
 
     const brushended = useCallback(
@@ -233,8 +244,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
         d3
           .brush()
           .extent([
-            [margin.left, margin.top],
-            [width - margin.right, height - margin.bottom],
+            [0, 0],
+            [innerWidth, innerHeight],
           ])
           .on("start brush", brushed)
           .on("end", brushended),
@@ -269,7 +280,8 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
     return (
       <>
         <Canvas
-          dpr={window.devicePixelRatio}
+          dpr={Math.min(window.devicePixelRatio, 2)}
+          gl={{ antialias: true }}
           style={{
             background: "transparent",
             position: "absolute",
@@ -387,7 +399,7 @@ export const Scatterplot = withTooltip<DotsProps, PointsRange>(
               <circle
                 cx={x(hoveredPoint[xVariable])}
                 cy={y(hoveredPoint[yVariable])}
-                r={hoveredPoint.radius * 1.4}
+                r={6}
                 fill="white"
                 stroke={colorScale(hoveredPoint[colorVariable])}
                 strokeWidth={2}
