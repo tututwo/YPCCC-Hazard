@@ -1,7 +1,8 @@
 import React from "react";
 import { useMapStore } from "@/lib/store";
 const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
-  const { updateSelectedCounties, setSelectedState,filteredData } = useMapStore();
+  const { updateSelectedCounties, setSelectedState, filteredData } =
+    useMapStore();
   return (
     <div className="flex flex-col justify-around w-full h-full">
       <div className="text-xs text-gray-600 mt-1 mb-4 self-center">
@@ -18,7 +19,7 @@ const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
               Bigger gap
             </span>
           </div>
-          <div className="w-8 h-px bg-gray-900  text-right"></div>
+          {/* <div className="w-8 h-px bg-gray-900  text-right"></div> */}
           <div className="flex items-center  flex-col text-right">
             <span
               className="inline-block"
@@ -42,14 +43,14 @@ const ColorLegend = ({ colors, data, width, height, colorVariable }) => {
                 }}
                 onClick={() => {
                   const filteredDataID = filteredData
-                  .filter((d) => {
-                    return (
-                      +d[colorVariable] <= +color.value &&
-                      +d[colorVariable] >= +color.value - 0.2
-                    );
-                  })
-                  .map((d) => d.geoid);
-                updateSelectedCounties(filteredDataID);
+                    .filter((d) => {
+                      return (
+                        +d[colorVariable] <= +color.value &&
+                        +d[colorVariable] >= +color.value - 0.2
+                      );
+                    })
+                    .map((d) => d.geoid);
+                  updateSelectedCounties(filteredDataID);
                   // setSelectedState({id: 0, name: "US"})
                 }}
                 aria-label={`Select color for value ${color.value}`}

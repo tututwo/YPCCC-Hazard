@@ -69,16 +69,16 @@ const categories = [
   { name: "Drought", subcategories: ["Subcategory 1", "Subcategory 2"] },
 ];
 const colors = [
-  { value: 1.0, color: "#AE1C3E" },
-  { value: 0.8, color: "#C6536F" },
-  { value: 0.6, color: "#D6798F" },
-  { value: 0.4, color: "#E69FB0" },
-  { value: 0.2, color: "#FBCFDA" },
-  { value: 0.0, color: "#D2E4F6" },
-  { value: -0.2, color: "#A7BDD3" },
-  { value: -0.4, color: "#7590AB" },
-  { value: -0.6, color: "#4E6C8A" },
-  { value: -0.8, color: "#11375A" },
+  { value: 1.0, color: "#B11B42" },
+  { value: 0.8, color: "#DE3C47" },
+  { value: 0.6, color: "#F36F5F" },
+  { value: 0.4, color: "#FD9F8C" },
+  { value: 0.2, color: "#FFCEC8" },
+  { value: 0.0, color: "#D9D9D9" },
+  { value: -0.2, color: "#B4B8B8" },
+  { value: -0.4, color: "#8F979B" },
+  { value: -0.6, color: "#6D7881" },
+  { value: -0.8, color: "#505965" },
   { value: -1.0, color: "none" },
 ];
 gsap.registerPlugin(useGSAP);
@@ -221,7 +221,7 @@ export default function Home() {
                     {({ width, height }) => {
                       return (
                         <DataTableDemo
-                          data={data}
+                          data={data.slice(0,30)}
                           height={height}
                           xVariable={xVariable}
                           yVariable={yVariable}

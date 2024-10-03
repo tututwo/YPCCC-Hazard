@@ -208,26 +208,7 @@ const DeckglMap = ({
     }
   }, [selectedZoomCounty]);
   // enable color transition
-  // useGSAP(
-  //   () => {
-  //     const targetAlphas = {};
-  //     geographyData.features.forEach((feature) => {
-  //       targetAlphas[feature.properties.STATENAME] =
-  //         selectedState.name === "US" ||
-  //         feature.properties.STATENAME === selectedState.name
-  //           ? 250
-  //           : 80;
-  //     });
 
-  //     gsap.to(alphaValues, {
-  //       ...targetAlphas,
-  //       duration: 0.88,
-  //       ease: "power2.inOut",
-  //       onUpdate: () => setAlphaValues({ ...alphaValues }),
-  //     });
-  //   },
-  //   { dependencies: [selectedState, geographyData] }
-  // );
 
   const layers = useMemo(
     () =>

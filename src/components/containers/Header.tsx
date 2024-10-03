@@ -9,8 +9,13 @@ import {
 import { useMapStore } from "@/lib/store";
 
 export const HeatGapHeader = () => {
-  const { USStates, selectedState, setSelectedState, selectedZoomCounty, setSelectedZoomCounty } =
-    useMapStore();
+  const {
+    USStates,
+    selectedState,
+    setSelectedState,
+    selectedZoomCounty,
+    setSelectedZoomCounty,
+  } = useMapStore();
 
   const getStateDataViaId = (id: string) => {
     const state = USStates.find((state) => state.id.toString() === id);
@@ -40,11 +45,14 @@ export const HeatGapHeader = () => {
   };
 
   return (
-    <div className="mx-auto bg-blue-50 py-2 px-6">
+    <div className="mx-auto bg-[#E2E2E2] py-2 px-6">
       <div className="flex items-center space-x-4">
-        <h2 className="text-2xl font-bold text-blue-900">Heat gap</h2>
+        <h2 className="text-2xl font-bold ">Heat gap</h2>
         <span className="text-gray-600">in</span>
-        <Select defaultValue={selectedState.name} onValueChange={handleStateChange}>
+        <Select
+          defaultValue={selectedState.name}
+          onValueChange={handleStateChange}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue>{selectedState.name}</SelectValue>
           </SelectTrigger>
@@ -68,7 +76,8 @@ export const HeatGapHeader = () => {
           </SelectTrigger>
           <SelectContent>
             {USStates.find(
-              (state) => state.name === selectedState.name && state.name !== "US"
+              (state) =>
+                state.name === selectedState.name && state.name !== "US"
             )?.counties.map((county) => (
               <SelectItem key={county.geoID} value={county.geoID.toString()}>
                 {county.countyName}
